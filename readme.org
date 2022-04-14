@@ -1,0 +1,64 @@
+#+PROPERTY: header-args:sh :session *rtree*
+* aod-rtree
+  An rtree implementation, with a focus of minimizing template (thus
+  compile time) arguments.
+
+* Motivation
+  All the other implementations ([[https://superliminal.com/sources/#C_Code][superliminal]], [[https://gitlab.com/mdds/mdds][mdds]], [[https://www.boost.org/doc/libs/1_79_0/libs/geometry/doc/html/geometry/reference/spatial_indexes/boost__geometry__index__rtree.html][boost]]) that I'm
+  aware of use compile-time template arguments for the dimensionality
+  (& other options). This means that the N-dimension rectangles are
+  stored like =double coordinates[N]=. This poses a problem when one
+  wants to set up the dimensionality on runtime. (Note: for the
+  superliminal version, the [[https://github.com/nushoin/RTree][nushoin]] fork is used, which contains some
+  additions - ie usage of std::functions)
+
+  Another motivation was to check out the idea of using =handles=
+  instead of pointers (as inspired by [[https://floooh.github.io/2018/06/17/handles-vs-pointers.html][this article]]). The tree's data
+  are stored in plain =std::vector=, thus making a copy of the tree is
+  as easy as copying those vectors: no tree-traversal is needed.
+  Extending on that, I want to create an immutable version of this
+  library in the future.
+
+  Finally, an advantage with this library is that almost all of the
+  implementation resides in [[file:src/aod/rtree_base.cpp]], which can
+  just be compiled & linked to. This can lead in reduced compile times
+  & binary size (compared to using the other afforementioned
+  libraries), depending on your rtree usage on your codebase.
+  
+* Usage
+  #+begin_src cpp
+#include <aod/rtree.hpp>
+
+aod::Rtree<std::string> tree(2); // dimensionality: 2
+tree.insert({0,0}, {1,1}, "0,0->1,1");
+tree.insert({1,1}, {2,2}, "1,1->2,2");
+tree.insert({3,3}, {4,4}, "3,3->4,4");
+auto found = tree.search({0,0}, {2, 2});
+// found will be a vector: { "0,0->1,1", "1,1->2,2" }
+  #+end_src
+
+  for more, just see the [[file:test/test_catch.cpp][tests]]
+* Benchmarks
+  For the benchmarks, a =NxN= grid is constructed with points, which
+  is shuffled in a deterministic way. Each point of the grid is then
+  inserted to the tree (no bulk loading). The results are when
+  compiling with =-O2=.
+
+  [[file:doc/benchmark-init-O2.png]]
+
+  [[file:doc/benchmark-search-O2.png]]
+  
+  [[file:doc/benchmark-copy-O2.png]]
+
+* TODOs
+  - create immutable version
+    - first naive version
+    - then, consider immer for structural sharing?
+  - reuse node/entry/data/rect ids when removing entries
+  - compile-time/template argument for type of rectangles (double,
+    float etc). Currently double is used
+  - create some scripting language bindings (NodeJs, python)
+
+* Credits
+  - https://github.com/lakshayg/google_benchmark_plot used for the benchmarks plots as seen in this readme
+  - superliminal's RTree. The code used in this repo for splitting nodes (pick_seeds, distribute_entries - ie PickNext in the guttman original paper lingo) is based on the superliminal code

@@ -1,0 +1,9 @@
+subprojects/*
+!subprojects/*.wrap
+!subprojects/packagefiles
+.vscode/
+.cache/
+callgrind.out*
+massif.out*
+*.xml
+*.csv

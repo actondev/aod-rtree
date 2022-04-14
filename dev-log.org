@@ -1,0 +1,13 @@
+#+PROPERTY: header-args:sh :session *aod-rtree*
+
+* <2022-04-15 Fri> 400x400: search 5x5 area fail
+  aha. was not updating parent entry after inserting new node
+
+  need to revisit the adjust_tree code, it's a mess
+  #+begin_src sh
+./build/test/catch-tests [fixme]
+  #+end_src
+
+  added a test scanning whole rtree in 5x5 regions. seems fixed!
+** <2022-04-16 Sat> refactoring adjust-tree
+   after some more bugs, now seems nice & readable

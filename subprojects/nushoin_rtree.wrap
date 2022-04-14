@@ -1,0 +1,4 @@
+[wrap-git]
+ url = https://github.com/nushoin/RTree
+ revision = 4bd551c7e2b2cf3fce9d4bf3d18f4c58d1efefc1
+ patch_directory = nushoin_rtree

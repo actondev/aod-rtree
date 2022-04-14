@@ -1,0 +1,74 @@
+#+PROPERTY: header-args:sh :session *aod-rtree*
+
+#+begin_src sh
+rm -rf build
+meson setup build
+#+end_src
+* testing
+  #+begin_src sh
+meson test -C build -v
+  #+end_src
+* benchmark
+  #+begin_src sh
+meson test -C build --benchmark -v
+
+meson configure build -Doptimization=0
+meson configure build -Doptimization=2
+meson configure build -Doptimization=3
+  #+end_src
+** benchmark dependencies
+   #+begin_src sh
+# boost (for boost rtree)
+sudo apt install libboost-all-dev
+   #+end_src
+** python plot
+   #+begin_src sh
+meson compile -Cbuild
+opt=$(meson configure build | grep optimization | head -1 | awk '{print $2}') && echo "optimization $opt"
+echo "Running benchmarks for -O${opt}"
+   #+end_src
+
+   #+begin_src sh
+csv="benchmark-init-O${opt}.csv"
+png="benchmark-init-O${opt}.png"
+./build/test/benchmark/benchmarks --benchmark_filter=init --benchmark_format=csv | tee "$csv"
+python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "init: inserting points from a NxN grid" --xlabel "N" --ylabel "time (ms)"
+   #+end_src
+
+   #+begin_src sh
+csv="benchmark-search-O${opt}.csv"
+png="benchmark-search-O${opt}.png"
+./build/test/benchmark/benchmarks --benchmark_filter=search --benchmark_format=csv | tee "$csv"
+python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "search (5x5 area)" --xlabel "N" --ylabel "time (ms)"
+   #+end_src
+
+   #+begin_src sh
+csv="benchmark-copy-O${opt}.csv"
+png="benchmark-copy-O${opt}.png"
+./build/test/benchmark/benchmarks --benchmark_filter=copy --benchmark_format=csv | tee "$csv"
+python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "copy" --xlabel "N" --ylabel "time (ms)"
+   #+end_src
+
+   
+*** python dependencies
+    #+begin_src sh
+pip3 install pandas matplotlib
+    #+end_src
+* COMMENT valgrind (profiling, memory leaks etc)
+  #+begin_src sh
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./build/test/run-tests "200x2d rtree"
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./build/test/run-tests "200x2d drtree3"
+
+valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose ./build/test/run-tests "200x2d aod::rtree"
+  #+end_src
+** callgrind (performance)
+   #+begin_src sh
+valgrind --tool=callgrind ./build/test/catch-tests "aod::Rtree 200x200"
+   #+end_src
+** massif (memory allocations)
+   massif-visualizer tool
+   #+begin_src sh
+rm massif.out*
+valgrind --tool=massif ./build/test/run-tests "200x2d drtree"
+valgrind --tool=massif ./build/test/run-tests "200x2d rtree"
+   #+end_src

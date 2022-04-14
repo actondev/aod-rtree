@@ -1,0 +1,4 @@
+[wrap-git]
+  url = https://gitlab.com/mdds/mdds
+  revision = 2.0.2
+  patch_directory = mdds
