@@ -61,4 +61,7 @@ auto found = tree.search({0,0}, {2, 2});
 
 * Credits
   - https://github.com/lakshayg/google_benchmark_plot used for the benchmarks plots as seen in this readme
-  - superliminal's RTree. The code used in this repo for splitting nodes (pick_seeds, distribute_entries - ie PickNext in the guttman original paper lingo) is based on the superliminal code
+  - superliminal's RTree. The code used in this repo for splitting
+    nodes (pick_seeds, distribute_entries - ie PickNext in the guttman
+    original paper lingo) is based on the superliminal code
+  - https://github.com/hebaishi/easy-cpp-print was useful for debugging: printing out std::vectors etc
