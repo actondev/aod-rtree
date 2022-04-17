@@ -13,6 +13,11 @@ cpp_args = []
 if get_option('test')
   cpp_args += '-DDEBUG'
 endif
+
+# disabling asserts
+# can be done with meson configure build -Db_ndebug=true
+# cpp_args += '-DNDEBUG'
+
 aod_rtree = static_library('aod-rtree',
                 sources: sources,
                 include_directories:  [

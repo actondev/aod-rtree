@@ -238,10 +238,9 @@ RtreeBase::Eid RtreeBase::choose_subtree(Nid n, Rid r) {
 
   for (int i = 0; i < node.count; i++) {
     Eid e = get_node_entry(n, i);
-    Entry &entry = get_entry(e);
-    Rid entry_rect = entry.rect_id;
-    area = rect_volume(entry_rect);
-    combine_rects(r, entry_rect, m_temp_rect);
+    const Entry &entry = get_entry(e);
+    area = rect_volume(entry.rect_id);
+    combine_rects(r, entry.rect_id, m_temp_rect);
     increase = rect_volume(m_temp_rect) - area;
     if ((increase < best_incr) || first_run) {
       // clearly better (or init)
@@ -266,16 +265,13 @@ void RtreeBase::update_entry_rect(Eid e) {
   Nid n = the_entry.child_id;
   if (!n)
     return;
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   if (!node.count)
     return;
   // going through the child node entries
   Eid child0_id = get_node_entry(n, 0);
   const Entry &child0 = get_entry(child0_id);
-  for (int i = 0; i < m_dims; i++) {
-    rect_low_rw(r, i) = rect_low_ro(child0.rect_id, i);
-    rect_high_rw(r, i) = rect_high_ro(child0.rect_id, i);
-  }
+  copy_rect(child0.rect_id, r);
   for (int i = 1; i < node.count; ++i) {
     Eid child = get_node_entry(n, i);
     combine_rects(get_entry(child).rect_id, r, r);
@@ -520,9 +516,11 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
     // propagating new node (split) upwards.
     if (nn && level >= 1) {
       const TraversalEntry &parent = traversal[level-1];
-      // const Eid parent_entry = parent.entry;
+#ifndef NDEBUG
+      // new_node used only for assert, ifdef NDBEG : warning for unused variable
       const Node &new_node = get_node(nn);
       ASSERT(get_node(parent.node).height == new_node.height + 1);
+#endif
 
       const Eid ne = make_entry_id();
       Entry &new_entry = get_entry(ne);
@@ -542,10 +540,13 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
 
     Node &new_root = get_node(new_root_id);
     const Node &existing_root = get_node(m_root_id);
-    const Node &new_node = get_node(nn);
-
     new_root.height = existing_root.height + 1;
+
+#ifndef NDEBUG
+    // new_node used only for assert, ifdef NDBEG : warning for unused variable
+    const Node &new_node = get_node(nn);
     ASSERT(existing_root.height == new_node.height);
+#endif
 
     const Eid old_root_e = make_entry_id();
     const Eid new_node_e = make_entry_id();
@@ -977,7 +978,6 @@ bool RtreeBase::validate_mbrs() {
 }
 
 bool RtreeBase::validate_mbrs(Eid e) {
-  // if(!e) return true;
   const Entry &entry = get_entry(e);
   Nid n = entry.child_id;
   Rid r = entry.rect_id;
@@ -987,11 +987,7 @@ bool RtreeBase::validate_mbrs(Eid e) {
   const Rid &child0_r = get_entry(child0).rect_id;
   const Node &node = get_node(n);
 
-  for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(m_temp_rect, i) = rect_low_ro(child0_r, i);
-    rect_high_rw(m_temp_rect, i) = rect_high_ro(child0_r, i);
-  }
-
+  copy_rect(child0_r, m_temp_rect);
   for (int i = 1; i < node.count; ++i) {
     const Rid child_r = get_entry(get_node_entry(n, i)).rect_id;
     combine_rects(child_r, m_temp_rect, m_temp_rect);

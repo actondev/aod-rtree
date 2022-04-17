@@ -11,6 +11,15 @@ catch_test_src = files(
   'test_catch.cpp'
 )
 
+
+test_cpp_args = [
+    '-Wno-narrowing',
+    '-Wno-sign-compare',
+    '-DDEBUG',
+    # '-DCATCH_CONFIG_ENABLE_BENCHMARKING'
+]
+test_cpp_args += cpp_args
+
 catch_tests = executable(
   'catch-tests',
   catch_test_src,
@@ -19,12 +28,7 @@ catch_tests = executable(
     aod_rtree_dep,
     nushoin_rtree_dep,
   ],
-  cpp_args: [
-    '-Wno-narrowing',
-    '-Wno-sign-compare',
-    '-DDEBUG',
-    # '-DCATCH_CONFIG_ENABLE_BENCHMARKING'
-  ]
+  cpp_args: test_cpp_args
 )
 
 test('catch',

@@ -23,16 +23,13 @@ class RtreeBase {
 
   struct Id {
     static const id_t nullid = std::numeric_limits<id_t>::max();
-    id_t id = nullid; //
-    operator bool() const { return id != nullid; }
-    Id() : Id(nullid){};
-    Id(const Id &other) : Id(other.id){};
-    Id(id_t id) : id{id} {}
-    friend bool operator==(const Id &lhs, const Id &rhs) {
+    id_t id = nullid;
+    inline operator bool() const { return id != nullid; }
+    inline friend bool operator==(const Id &lhs, const Id &rhs) {
       return lhs.id == rhs.id;
     }
     // for ordered set
-    friend bool operator<(const Id &lhs, const Id &rhs) {
+    inline friend bool operator<(const Id &lhs, const Id &rhs) {
       return lhs.id < rhs.id;
     }
   };
