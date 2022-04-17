@@ -81,7 +81,7 @@ PRE int QUAL::remove(const Vec &low, const Vec &high, Predicate pred) {
     return pred(data);
   };
 
-  remove(low, high, base_pred);
+  return remove(low, high, base_pred);
 }
 
 #undef PRE
