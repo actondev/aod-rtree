@@ -85,8 +85,8 @@ class RtreeBase {
   static Options default_options;
   using Traversals = std::vector<Traversal>;
 
-  using Predicate = std::function<bool(Did)>;
-  using SearchCb = std::function<bool(Did)>;
+  using Predicate = std::function<bool(Eid)>;
+  using SearchCb = std::function<bool(Eid)>;
 
   /// Helper struct used in partitioning M+1 entries into two groups
   struct Partition {
@@ -137,7 +137,8 @@ class RtreeBase {
 
   Node &get_node(Nid n);
   const Node &get_node(Nid n) const;
-  Entry &get_entry(Eid e);
+  // Entry &get_entry(Eid e);
+  inline Entry &get_entry(Eid e) { return m_entries[e.id]; }
   const Entry &get_entry(Eid e) const;
 
   ELEMTYPE rect_volume(Rid) const;
@@ -160,8 +161,8 @@ class RtreeBase {
 
   void insert(const Vec &low, const Vec &high, Did);
 
-  std::vector<Did> search(const Vec &low, const Vec &high);
-  int search(const Vec &low, const Vec &high, std::vector<Did> &results);
+  std::vector<Eid> search(const Vec &low, const Vec &high);
+  int search(const Vec &low, const Vec &high, std::vector<Eid> &results);
   int search(const Vec &low, const Vec &high, SearchCb cb);
   std::string to_string();
 

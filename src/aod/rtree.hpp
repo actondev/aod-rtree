@@ -19,15 +19,19 @@ PRE class Rtree : public RtreeBase {
   using RtreeBase::remove; // base version of remove, without predicate
 
   using Predicate = std::function<bool(const DATATYPE &)>;
+  using PredicateExt = std::function<bool(const DATATYPE &, const Rect&)>;
   using SearchCb = std::function<bool(const DATATYPE &)>;
+  using SearchCbExt = std::function<bool(const DATATYPE &, const Rect&)>;
   void insert(const Vec &low, const Vec &high, const DATATYPE &data);
 
   std::vector<DATATYPE> search(const Vec &low, const Vec &high);
 
   int search(const Vec &low, const Vec &high, std::vector<DATATYPE> &results);
   int search(const Vec &low, const Vec &high, SearchCb);
+  int search(const Vec &low, const Vec &high, SearchCbExt);
 
   int remove(const Vec &low, const Vec &high, Predicate);
+  int remove(const Vec &low, const Vec &high, PredicateExt);
 };
 
 // implementation
@@ -58,25 +62,63 @@ PRE std::vector<DATATYPE> QUAL::search(const Vec &low, const Vec &high) {
 PRE int QUAL::search(const Vec &low, const Vec &high,
                       std::vector<DATATYPE> &results) {
   results.clear();
-  RtreeBase::SearchCb cb = [&](Did did) {
-    results.push_back(get_data(did));
+  RtreeBase::SearchCb cb = [&](Eid e) {
+    const Entry &entry = get_entry(e);
+    results.push_back(get_data(entry.data_id));
     return true;
   };
   return RtreeBase::search(low, high, cb);
 }
 
 PRE int QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
-  RtreeBase::SearchCb base_cb = [&](Did did) {
-    const DATATYPE &data = get_data(did);
+  RtreeBase::SearchCb base_cb = [&](Eid e) {
+    const Entry& entry = get_entry(e);
+    const DATATYPE &data = get_data(entry.data_id);
     return cb(data);
   };
   return RtreeBase::search(low, high, base_cb);
 }
 
+PRE int QUAL::search(const Vec &low, const Vec &high, SearchCbExt cb) {
+  Rect rect;
+  rect.low.resize(m_dims);
+  rect.high.resize(m_dims);
+  RtreeBase::SearchCb base_cb = [&](Eid e) {
+    const Entry& entry = get_entry(e);
+    const DATATYPE &data = get_data(entry.data_id);
+    for(int i=0; i<m_dims; ++i) {
+      rect.low[i] = rect_low_ro(entry.rect_id, i);
+      rect.high[i] = rect_high_ro(entry.rect_id, i);
+    }
+    return cb(data, rect);
+  };
+  return RtreeBase::search(low, high, base_cb);
+}
+
+
 PRE int QUAL::remove(const Vec &low, const Vec &high, Predicate pred) {
-  RtreeBase::Predicate base_pred = [&](Did did) {
-    const DATATYPE &data = get_data(did);
+  RtreeBase::Predicate base_pred = [&](Eid e) {
+    const Entry& entry = get_entry(e);
+    const DATATYPE &data = get_data(entry.data_id);
     return pred(data);
+  };
+
+  return remove(low, high, base_pred);
+}
+
+PRE int QUAL::remove(const Vec &low, const Vec &high, PredicateExt pred) {
+  Rect rect;
+  rect.low.resize(m_dims);
+  rect.high.resize(m_dims);
+
+  RtreeBase::Predicate base_pred = [&](Eid e) {
+    const Entry& entry = get_entry(e);
+    const DATATYPE &data = get_data(entry.data_id);
+    for (int i = 0; i < m_dims; ++i) {
+      rect.low[i] = rect_low_ro(entry.rect_id, i);
+      rect.high[i] = rect_high_ro(entry.rect_id, i);
+    }
+    return pred(data, rect);
   };
 
   return remove(low, high, base_pred);

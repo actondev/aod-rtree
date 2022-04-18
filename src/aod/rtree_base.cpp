@@ -86,7 +86,10 @@ inline RtreeBase::Node &RtreeBase::get_node(Nid n) { return m_nodes[n.id]; }
 inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
   return m_nodes[n.id];
 }
-inline RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
+
+// TODO inline but available to rtree.hpp including rtree_base.hpp also?
+// RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
+// inline RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
 inline const RtreeBase::Entry &RtreeBase::get_entry(Eid e) const {
   return m_entries[e.id];
 }
@@ -613,23 +616,23 @@ RtreeBase::Seeds RtreeBase::pick_seeds(const std::vector<Eid> &entries) {
 
 size_t RtreeBase::size() { return m_size; }
 
-std::vector<RtreeBase::Did> RtreeBase::search(const Vec &low, const Vec &high) {
-  std::vector<Did> res;
+std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) {
+  std::vector<Eid> res;
 
   search(low, high, res);
   return res;
 }
 
 int RtreeBase::search(const Vec &low, const Vec &high,
-                      std::vector<Did> &results) {
+                      std::vector<Eid> &results) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
   for (int i = 0; i < m_dims; ++i) {
     rect_low_rw(m_temp_rect, i) = low[i];
     rect_high_rw(m_temp_rect, i) = high[i];
   }
-  SearchCb cb = [&results](const Did &data) {
-    results.push_back(data);
+  SearchCb cb = [&results](const Eid &e) {
+    results.push_back(e);
     return true;
   };
 
@@ -675,7 +678,7 @@ bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {
       const Entry &entry = get_entry(e);
       // TODO define some algorithm for search: overlap vs contain, etc..
       if (rects_overlap(r, entry.rect_id)) {
-        if (!cb(entry.data_id)) {
+        if (!cb(e)) {
           // stop searching
           return false;
         } else {
@@ -730,7 +733,7 @@ void RtreeBase::clear() { init(); }
 int RtreeBase::dimensions() { return m_dims; }
 
 int RtreeBase::remove(const Vec &low, const Vec &high) {
-  Predicate pred = [](Did) { return true; };
+  Predicate pred = [](Eid) { return true; };
   return remove(low, high, pred);
 }
 
@@ -785,7 +788,7 @@ void RtreeBase::remove(Nid n, Rid r, int &counter, Traversals &traversals,
       Eid e = get_node_entry(n, i);
       const Entry &entry = get_entry(e);
       if (rects_overlap(r, entry.rect_id)) {
-        if (cb(entry.data_id)) {
+        if (cb(e)) {
           removed = true;
           ++counter;
           remove_node_entry(n, i);
