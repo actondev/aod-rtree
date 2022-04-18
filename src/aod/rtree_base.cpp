@@ -83,9 +83,13 @@ RtreeBase::Did RtreeBase::make_data_id() {
 }
 
 inline RtreeBase::Node &RtreeBase::get_node(Nid n) { return m_nodes[n.id]; }
-inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const { return m_nodes[n.id]; }
+inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
+  return m_nodes[n.id];
+}
 inline RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
-inline const RtreeBase::Entry &RtreeBase::get_entry(Eid e) const { return m_entries[e.id]; }
+inline const RtreeBase::Entry &RtreeBase::get_entry(Eid e) const {
+  return m_entries[e.id];
+}
 inline RtreeBase::Eid RtreeBase::get_node_entry(Nid n, int idx) const {
   return m_node_entries[n.id * M + idx];
 }
@@ -157,10 +161,7 @@ inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
 }
 
 RtreeBase::RtreeBase(int dimensions, const Options &options)
-    : m{options.m},
-      M{options.M},
-      m_dims(dimensions)
-{
+    : m{options.m}, M{options.M}, m_dims(dimensions) {
   ASSERT(m_dims > 0);
   ASSERT(m < M);
   init();
@@ -516,9 +517,10 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
     // bool is_above_new_node = level < (int)traversal.size() - 1;
     // propagating new node (split) upwards.
     if (nn && level >= 1) {
-      const TraversalEntry &parent = traversal[level-1];
+      const TraversalEntry &parent = traversal[level - 1];
 #ifndef NDEBUG
-      // new_node used only for assert, ifdef NDBEG : warning for unused variable
+      // new_node used only for assert, ifdef NDBEG : warning for unused
+      // variable
       const Node &new_node = get_node(nn);
       ASSERT(get_node(parent.node).height == new_node.height + 1);
 #endif
@@ -619,7 +621,7 @@ std::vector<RtreeBase::Did> RtreeBase::search(const Vec &low, const Vec &high) {
 }
 
 int RtreeBase::search(const Vec &low, const Vec &high,
-                       std::vector<Did> &results) {
+                      std::vector<Did> &results) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
   for (int i = 0; i < m_dims; ++i) {
@@ -731,7 +733,8 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
   TraversalEntry p;
   p.node = m_root_id;
   cur_traversal.push_back(p);
-  remove(m_root_id, m_temp_rect, removed, remove_traverals, cur_traversal, pred);
+  remove(m_root_id, m_temp_rect, removed, remove_traverals, cur_traversal,
+         pred);
 
   // sorting remove_traverals: longer traverals first, thus leaf node
   // entries (data) removed first
@@ -998,8 +1001,8 @@ RtreeBase::Options RtreeBase::default_options;
 bool RtreeBase::validate_mbrs() {
   Nid n = m_root_id;
   const Node &node = get_node(n);
-  for(int i=0; i< node.count; ++i) {
-    if(!validate_mbrs(get_node_entry(n, i))) {
+  for (int i = 0; i < node.count; ++i) {
+    if (!validate_mbrs(get_node_entry(n, i))) {
       return false;
     }
   }
@@ -1026,7 +1029,8 @@ bool RtreeBase::validate_mbrs(Eid e) {
   for (int i = 0; i < m_dims; ++i) {
     if (rect_low_ro(m_temp_rect, i) != rect_low_ro(r, i) ||
         rect_high_ro(m_temp_rect, i) != rect_high_ro(r, i)) {
-      cout << "invalid mbr " << r << " " << rect_to_string(r) << " vs " << rect_to_string(m_temp_rect) << endl;
+      cout << "invalid mbr " << r << " " << rect_to_string(r) << " vs "
+           << rect_to_string(m_temp_rect) << endl;
       return false;
     }
   }
