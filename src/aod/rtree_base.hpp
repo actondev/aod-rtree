@@ -226,6 +226,7 @@ public:
   void clear();
   int dimensions();
   Rect bounds();
+  void offset(const Vec&);
 
   #ifdef DEBUG
   bool has_duplicate_nodes();

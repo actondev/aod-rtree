@@ -711,6 +711,20 @@ RtreeBase::Rect RtreeBase::bounds() {
   return res;
 }
 
+// TODO: could just store the offset & apply it in every public function's (insert, search, remove, bounds) input/output
+void RtreeBase::offset(const Vec &offset) {
+  ASSERT(offset.size() == m_dims);
+  ASSERT(m_rects_low.size() == m_rects_high.size());
+  for (int i = 0; i < m_rects_low.size(); i += m_dims) {
+    for (int d = 0; d < m_dims; ++d) {
+      m_rects_low[i + d] += offset[d];
+    }
+    for (int d = 0; d < m_dims; ++d) {
+      m_rects_high[i + d] += offset[d];
+    }
+  }
+}
+
 void RtreeBase::clear() { init(); }
 
 int RtreeBase::dimensions() { return m_dims; }
