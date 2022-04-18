@@ -72,7 +72,7 @@ PRE void QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
     const DATATYPE &data = get_data(did);
     return cb(data);
   };
-  RtreeBase::search(low, high, cb);
+  RtreeBase::search(low, high, base_cb);
 }
 
 PRE int QUAL::remove(const Vec &low, const Vec &high, Predicate pred) {

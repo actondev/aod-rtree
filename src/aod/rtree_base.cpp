@@ -19,8 +19,9 @@ namespace aod {
 
 #ifdef DEBUG
 using std::cout;
-using std::endl;
 #endif
+
+using std::endl;
 
 std::ostream &operator<<(std::ostream &os, const RtreeBase::Eid &id) {
   os << "Eid{" << id.id << "}";
@@ -1036,8 +1037,9 @@ bool RtreeBase::has_duplicate_nodes() {
 
   return traverse(m_root_id);
 }
-RtreeBase::Options RtreeBase::default_options;
 
 #endif // debug
+
+RtreeBase::Options RtreeBase::default_options;
 
 } // namespace aod
