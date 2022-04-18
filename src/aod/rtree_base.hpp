@@ -157,8 +157,8 @@ class RtreeBase {
   void insert(const Vec &low, const Vec &high, Did);
 
   std::vector<Did> search(const Vec &low, const Vec &high);
-  void search(const Vec &low, const Vec &high, std::vector<Did> &results);
-  void search(const Vec &low, const Vec &high, SearchCb cb);
+  int search(const Vec &low, const Vec &high, std::vector<Did> &results);
+  int search(const Vec &low, const Vec &high, SearchCb cb);
   std::string to_string();
 
   void reinsert_entry(Eid e);

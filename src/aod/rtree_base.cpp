@@ -618,7 +618,7 @@ std::vector<RtreeBase::Did> RtreeBase::search(const Vec &low, const Vec &high) {
   return res;
 }
 
-void RtreeBase::search(const Vec &low, const Vec &high,
+int RtreeBase::search(const Vec &low, const Vec &high,
                        std::vector<Did> &results) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
@@ -633,9 +633,10 @@ void RtreeBase::search(const Vec &low, const Vec &high,
 
   int found_count = 0;
   search(m_root_id, m_temp_rect, found_count, cb);
+  return found_count;
 }
 
-void RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) {
+int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
   for (int i = 0; i < m_dims; ++i) {
@@ -644,6 +645,7 @@ void RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) {
   }
   int found_count = 0;
   search(m_root_id, m_temp_rect, found_count, cb);
+  return found_count;
 }
 
 bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {

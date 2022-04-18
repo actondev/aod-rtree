@@ -24,10 +24,8 @@ PRE class Rtree : public RtreeBase {
 
   std::vector<DATATYPE> search(const Vec &low, const Vec &high);
 
-  void search(const Vec &low, const Vec &high, std::vector<DATATYPE> &results);
-  /// Return true from the search callback to continue searching,
-  /// false to stop.
-  void search(const Vec &low, const Vec &high, SearchCb);
+  int search(const Vec &low, const Vec &high, std::vector<DATATYPE> &results);
+  int search(const Vec &low, const Vec &high, SearchCb);
 
   int remove(const Vec &low, const Vec &high, Predicate);
 };
@@ -57,22 +55,22 @@ PRE std::vector<DATATYPE> QUAL::search(const Vec &low, const Vec &high) {
   return results;
 }
 
-PRE void QUAL::search(const Vec &low, const Vec &high,
+PRE int QUAL::search(const Vec &low, const Vec &high,
                       std::vector<DATATYPE> &results) {
   results.clear();
   RtreeBase::SearchCb cb = [&](Did did) {
     results.push_back(get_data(did));
     return true;
   };
-  RtreeBase::search(low, high, cb);
+  return RtreeBase::search(low, high, cb);
 }
 
-PRE void QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
+PRE int QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
   RtreeBase::SearchCb base_cb = [&](Did did) {
     const DATATYPE &data = get_data(did);
     return cb(data);
   };
-  RtreeBase::search(low, high, base_cb);
+  return RtreeBase::search(low, high, base_cb);
 }
 
 PRE int QUAL::remove(const Vec &low, const Vec &high, Predicate pred) {
