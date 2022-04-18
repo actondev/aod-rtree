@@ -683,9 +683,9 @@ bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {
   return true; // continue searching
 }
 
-void RtreeBase::clear() {
-  init();
-}
+void RtreeBase::clear() { init(); }
+
+int RtreeBase::dimensions() { return m_dims; }
 
 int RtreeBase::remove(const Vec &low, const Vec &high) {
   Predicate pred = [](Did) { return true; };

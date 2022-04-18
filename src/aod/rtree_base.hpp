@@ -220,6 +220,7 @@ public:
   int remove(const Vec &low, const Vec &high);
   int remove(const Vec &low, const Vec &high, Predicate);
   void clear();
+  int dimensions();
 
   #ifdef DEBUG
   bool has_duplicate_nodes();
