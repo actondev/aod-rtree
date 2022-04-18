@@ -14,6 +14,10 @@ class RtreeBase {
  public:
   using ELEMTYPE = double;
   using Vec = std::vector<ELEMTYPE>;
+  struct Rect {
+    Vec low;
+    Vec high;
+  };
   using id_t = uint32_t;
 
   struct Rid;
@@ -221,6 +225,7 @@ public:
   int remove(const Vec &low, const Vec &high, Predicate);
   void clear();
   int dimensions();
+  Rect bounds();
 
   #ifdef DEBUG
   bool has_duplicate_nodes();

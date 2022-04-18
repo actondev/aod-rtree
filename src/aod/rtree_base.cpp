@@ -685,6 +685,30 @@ bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {
   return true; // continue searching
 }
 
+// TODO could be const but I'm using copy_rect & combine_rects
+RtreeBase::Rect RtreeBase::bounds() {
+  Rect res;
+  res.low.resize(m_dims, 0);
+  res.high.resize(m_dims, 0);
+  const Node &root = get_node(m_root_id);
+  if (!root.count)
+    return res;
+
+  const Entry &entry0 = get_entry(get_node_entry(m_root_id, 0));
+  copy_rect(entry0.rect_id, m_temp_rect);
+  for (int i = 0; i < root.count; ++i) {
+    const Entry &entry = get_entry(get_node_entry(m_root_id, i));
+    combine_rects(entry.rect_id, m_temp_rect, m_temp_rect);
+  }
+
+  for (int i = 0; i < m_dims; ++i) {
+    res.low[i] = rect_low_ro(m_temp_rect, i);
+    res.high[i] = rect_high_ro(m_temp_rect, i);
+  }
+
+  return res;
+}
+
 void RtreeBase::clear() { init(); }
 
 int RtreeBase::dimensions() { return m_dims; }
@@ -968,6 +992,8 @@ std::ostream &operator<<(std::ostream &os, const RtreeBase::Xml &xml) {
 
 RtreeBase::Xml RtreeBase::to_xml() { return Xml(this); }
 
+RtreeBase::Options RtreeBase::default_options;
+
 #ifdef DEBUG
 bool RtreeBase::validate_mbrs() {
   Nid n = m_root_id;
@@ -1041,7 +1067,5 @@ bool RtreeBase::has_duplicate_nodes() {
 }
 
 #endif // debug
-
-RtreeBase::Options RtreeBase::default_options;
 
 } // namespace aod
