@@ -1,7 +1,7 @@
 #include "./common.hpp"
 #include <RTree.h>
 #include <catch2/catch.hpp>
-
+#include <string>
 RTree<Point, double, 2> grid_to_superliminal_rtree(const Grid &grid) {
   RTree<Point, double, 2> tree;
   for (const Point &el : grid.points) {
@@ -395,4 +395,53 @@ TEST_CASE("clear", "[aod::Rtree]") {
 
   found = tree.search({10, 10}, {14, 14});
   REQUIRE(found.size() == 25);
+}
+
+TEST_CASE("bounds & offset", "[aod::Rtree]") {
+  aod::Rtree<std::string> tree(2);
+  std::vector<std::string> expected;
+  std::vector<std::string> found;
+  aod::Rtree<std::string>::Rect bounds;
+  aod::Rtree<std::string>::Rect expected_bounds;
+  tree.insert({0, 0}, {1, 1}, "0,0->1,1");
+  tree.insert({1, 1}, {2, 2}, "1,1->2,2");
+  tree.insert({3, 3}, {4, 4}, "3,3->4,4");
+  
+  found = tree.search({0, 0}, {2, 2});
+  expected = {"0,0->1,1", "1,1->2,2"};
+  REQUIRE_THAT(found, Catch::Matchers::UnorderedEquals(expected));  
+
+  bounds = tree.bounds();
+  expected_bounds.low = {0, 0};
+  expected_bounds.high = {4, 4};
+  REQUIRE(bounds.low == expected_bounds.low);
+  REQUIRE(bounds.high == expected_bounds.high);
+
+  int removed = tree.remove({0, 0}, {0.5, 0.5});
+  REQUIRE(removed == 1);
+
+  bounds = tree.bounds();
+  expected_bounds.low = {1, 1};
+  REQUIRE(bounds.low == expected_bounds.low);
+  REQUIRE(bounds.high == expected_bounds.high);
+
+  found = tree.search({1, 1}, {1,1});
+  expected = {"1,1->2,2"};
+  REQUIRE(found == expected);
+
+  tree.offset({10, 10});
+  
+  found = tree.search({1, 1}, {1, 1});
+  expected = {};
+  REQUIRE(found == expected);
+
+  found = tree.search({11, 11}, {11,11});
+  expected = {"1,1->2,2"};
+  REQUIRE(found == expected);
+
+  bounds = tree.bounds();
+  expected_bounds.low = {11, 11};
+  expected_bounds.high = {14, 14};
+  REQUIRE(bounds.low == expected_bounds.low);
+  REQUIRE(bounds.high == expected_bounds.high);
 }
