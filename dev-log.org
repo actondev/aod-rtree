@@ -11,3 +11,29 @@
   added a test scanning whole rtree in 5x5 regions. seems fixed!
 ** <2022-04-16 Sat> refactoring adjust-tree
    after some more bugs, now seems nice & readable
+* <2022-05-14 Sat> thinking of optimizations
+     #+begin_src sh
+meson compile -Cbuild
+meson test -C build -v
+
+./build/test/catch-tests "[fixme]"
+
+./build/test/benchmark/benchmarks --benchmark_filter="(aod|boost).+init/(256|512)" --benchmark_format=csv
+   #+end_src
+
+   #+begin_quote
+"aod_rtree_init/256",6,97.6534,97.6205,ms,,,,,
+"aod_rtree_init/512",1,588.029,587.799,ms,,,,,
+"boost_rtree_init/256",9,86.5938,86.5157,ms,,,,,
+"boost_rtree_init/512",2,384.206,384.044,ms,,,,,
+   #+end_quote
+
+   eager entry construction (theoretically entries are adjacent - better cache locality?).
+   But in action really slower. Had to do plenty more work
+
+   #+begin_quote
+"aod_rtree_init/256",5,124.873,124.864,ms,,,,,
+"aod_rtree_init/512",1,855.644,855.565,ms,,,,,
+"boost_rtree_init/256",9,82.0595,81.8655,ms,,,,,
+"boost_rtree_init/512",2,387.818,387.79,ms,,,,,
+   #+end_quote

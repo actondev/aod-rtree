@@ -32,6 +32,9 @@ class RtreeBase {
     inline friend bool operator==(const Id &lhs, const Id &rhs) {
       return lhs.id == rhs.id;
     }
+    inline friend bool operator!=(const Id &lhs, const Id &rhs) {
+      return lhs.id != rhs.id;
+    }
     // for ordered set
     inline friend bool operator<(const Id &lhs, const Id &rhs) {
       return lhs.id < rhs.id;
@@ -106,6 +109,8 @@ class RtreeBase {
   // max entries per node
   const int M = 8;
 
+  const bool m_eager_entry_construction{true};
+
   int m_dims;
 
   size_t m_size = 0;
@@ -117,6 +122,7 @@ class RtreeBase {
 
   Nid m_root_id;
 
+  mutable Eid m_temp_entry;
   mutable Rid m_temp_rect;
   mutable Partition m_partition;
   mutable Traversal m_traversal;
@@ -158,6 +164,7 @@ class RtreeBase {
   void entry_to_string(Eid, int level, int spaces, std::ostream &);
 
   void copy_rect(Rid src, Rid dst);
+  void copy_entry(Eid src, Eid dst);
 
   void insert(const Vec &low, const Vec &high, Did);
 

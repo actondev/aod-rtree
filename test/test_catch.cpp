@@ -1,6 +1,7 @@
 #include "./common.hpp"
 #include <RTree.h>
 #include <catch2/catch.hpp>
+#include <sstream>
 #include <string>
 RTree<Point, double, 2> grid_to_superliminal_rtree(const Grid &grid) {
   RTree<Point, double, 2> tree;
@@ -119,15 +120,15 @@ TEST_CASE("aod::Rtree 200x200", "[aod::Rtree][benchmark]") {
   }
 }
 
-TEST_CASE("aod::Rtree 8x8", "[aod::Rtree]") {
+TEST_CASE("aod::Rtree 8x8", "[aod::Rtree][fixmess]") {
   const int size = 8;
-  auto grid = make_grid(size);
+  auto grid = make_grid(size, 2, false );
   shuffle_deterministic(grid);
 
   aod::Rtree<Point> tree = grid_to_aod_rtree(grid);
   REQUIRE(tree.size() == size * size);
 
-  if (false) {
+  if (true) {
     std::ofstream ofs("aod-rtree-8x8-init.xml", std::ofstream::out);
     ofs << tree.to_xml();
     ofs.close();
@@ -312,20 +313,22 @@ TEST_CASE("tree options", "[aod::Rtree]") {
   WARN("init tree3 (m=16, M=32) took " << duration_ms(t2 - t1) << "ms");
 }
 
-TEST_CASE("aod::Rtree tree validations", "[aod::Rtree]") {
+TEST_CASE("aod::Rtree tree validations", "[aod::Rtree][fixme]") {
   std::vector<Point> found;
   std::vector<int> sizes = {16, 32, 64, 128, 256, 512};
-  for (int size : sizes) {
-    // cout << " size " << size << endl;
+  for (int size = 4; size<=10; size++) {
+    cout << " size " << size << endl;
     auto grid = make_grid(size, 2, true);
     aod::Rtree<Point> tree = grid_to_aod_rtree(grid);
-    if (!tree.validate_mbrs()) {
-      cout << " size " << size << " invalid mbrs " << endl;
-      std::ofstream ofs("aod-rtree-mbr-bug.xml", std::ofstream::out);
+    // if (!tree.validate_mbrs()) {
+      // cout << " size " << size << " invalid mbrs " << endl;
+      std::ostringstream name;
+      name << "aod-rtree-" << size <<"-init.xml";
+      std::ofstream ofs(name.str(), std::ofstream::out);
       ofs << tree.to_xml();
       ofs.close();
-      ASSERT(0);
-    }
+      // ASSERT(0);
+    // }
     if (tree.has_duplicate_nodes()) {
       cout << " size " << size << " duplicate nodes" << endl;
       std::ofstream ofs("aod-rtree-duplicate-nodes-bug.xml",
@@ -334,6 +337,16 @@ TEST_CASE("aod::Rtree tree validations", "[aod::Rtree]") {
       ofs.close();
       ASSERT(0);
     }
+    if (tree.has_duplicate_entries()) {
+      cout << " size " << size << " duplicate entries" << endl;
+      cout << tree.to_xml() << endl;
+      std::ofstream ofs("aod-rtree-duplicate-entries-bug.xml",
+                        std::ofstream::out);
+      ofs << tree.to_xml();
+      ofs.close();
+      ASSERT(0);
+    }
+    continue;
 
     // removing fat cross: leaving only areas of 2x2 in each corner
     int retain_side = 2;

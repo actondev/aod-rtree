@@ -19,6 +19,10 @@ namespace aod {
 
 #ifdef DEBUG
 using std::cout;
+// #include "../test/easyprint.hpp"
+// template <typename T> std::string pp(const T &x) {
+//   return easyprint::stringify(x);
+// }
 #endif
 
 using std::endl;
@@ -65,10 +69,16 @@ RtreeBase::Rid RtreeBase::make_rect_id() {
   return res;
 }
 RtreeBase::Nid RtreeBase::make_node_id() {
-  Nid nid{m_nodes_count++};
+  Nid n{m_nodes_count++};
   m_nodes.resize(m_nodes_count);
   m_node_entries.resize(m_nodes_count * M);
-  return nid;
+
+  if(m_eager_entry_construction) {
+    for(auto i = 0u; i < M; ++i) {
+      set_node_entry(n, i, make_entry_id());
+    }
+  }
+  return n;
 }
 RtreeBase::Eid RtreeBase::make_entry_id() {
   Eid e{m_entries_count++};
@@ -156,6 +166,15 @@ inline void RtreeBase::copy_rect(Rid src, Rid dst) {
     rect_high_rw(dst, i) = rect_high_ro(src, i);
   }
 }
+
+inline void RtreeBase::copy_entry(Eid src, Eid dst) {
+  const Entry &src_entry = get_entry(src);
+  Entry &dst_entry = get_entry(dst);
+  dst_entry.data_id = src_entry.data_id;
+  dst_entry.child_id = src_entry.child_id;
+  copy_rect(src_entry.rect_id, dst_entry.rect_id);
+}
+
 inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
   for (int i = 0; i < m_dims; i++) {
     rect_low_rw(dst, i) = Min(rect_low_ro(a, i), rect_low_ro(b, i));
@@ -183,6 +202,8 @@ void RtreeBase::init() {
   m_nodes.resize(0);
   m_node_entries.resize(0);
   m_entries.resize(0);
+
+  m_temp_entry = make_entry_id();
 
   m_root_id = make_node_id();
 
@@ -285,7 +306,8 @@ void RtreeBase::update_entry_rect(Eid e) {
 
 void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
   ++m_size;
-  const Eid e = make_entry_id(); // also sets the rect
+  const Eid e = m_eager_entry_construction ? m_temp_entry : make_entry_id();
+  // cout << "insert " << did << std::endl << to_xml() << std::endl;
   Entry &entry = get_entry(e);
   entry.data_id = did;
 
@@ -348,7 +370,13 @@ RtreeBase::Nid RtreeBase::insert(Nid n, Eid e) {
 void RtreeBase::plain_insert(Nid n, Eid e) {
   Node &node = get_node(n);
   ASSERT(node.count < M);
-  set_node_entry(n, node.count, e);
+  if (m_eager_entry_construction && e == m_temp_entry) {
+    Eid ne = get_node_entry(n, node.count);
+    assert(ne);
+    copy_entry(e, ne);
+  } else {
+    set_node_entry(n, node.count, e);
+  }
   ++node.count;
 }
 
@@ -360,13 +388,25 @@ RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
   ASSERT(node.count == M); // if node is not full, makes no sense being here
 
   std::vector<Eid> &entries = m_partition.entries;
+
   entries.clear();
   entries.resize(M + 1);
 
   for (int i = 0; i < node.count; ++i) {
     entries[i] = get_node_entry(n, i);
   }
-  entries[M] = e; // the new entry
+
+  if (m_eager_entry_construction && e == m_temp_entry) {
+    // Eid ne = get_node_entry(nn, 0);
+    Eid ne = make_entry_id();
+    assert(ne);
+    copy_entry(e, ne);
+    entries[M] = ne;
+  } else {
+    entries[M] = e; // the new entry
+  }
+
+  // std::cout << " split: entries" << pp(entries) << "\n";
 
   Seeds seeds = pick_seeds(entries);
 
@@ -374,6 +414,17 @@ RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
   new_node.count = 0;
 
   distribute_entries(n, nn, entries, seeds);
+  if (m_eager_entry_construction) {
+    for (auto i = node.count; i < M; ++i) {
+      set_node_entry(n, i, make_entry_id());
+    }
+    for (auto i = new_node.count; i < M; ++i) {
+      set_node_entry(nn, i, make_entry_id());
+    }
+  }
+  // std::cout << node_to_string(n) << node_to_string(nn) << std::endl;
+
+  // std::cout << "node 0 " << node_to_string(Nid{0}) << std::endl;
   // debugging: just placing first half entries to n, rest to nn
   // distribute_entries_naive(n, nn, entries);
 
@@ -492,7 +543,7 @@ void RtreeBase::adjust_rects(const Traversal &traversal) {
 /// The traversal is a vector of Entry->Node pairs. First one will
 /// have null entry -> root node. The last one will have enytry ->
 /// leaf node, leaf node being the node returned by choose_leaf. Note:
-/// newly inserted Entry e is not necessarily places into that leaf
+/// newly inserted Entry e is not necessarily placed into that leaf
 /// node if a split took place (a split took place if nn isn't
 /// nullish).
 void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
@@ -1066,7 +1117,7 @@ bool RtreeBase::has_duplicate_nodes() {
   std::function<bool(Nid)> traverse = [&](Nid n) {
     Node &node = get_node(n);
     if (nodes.count(n.id) > 0) {
-      cout << "Node " << n << " already in the container" << endl;
+      // cout << "Node " << n << " already in the container" << endl;
       return true;
     }
     nodes.insert(n.id);

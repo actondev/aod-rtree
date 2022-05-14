@@ -64,6 +64,10 @@ valgrind --leak-check=full --show-leak-kinds=all --track-origins=yes --verbose .
 ** callgrind (performance)
    #+begin_src sh
 valgrind --tool=callgrind ./build/test/catch-tests "aod::Rtree 200x200"
+
+valgrind --tool=callgrind ./build/test/benchmark/benchmarks --benchmark_filter="aod.+init/512"
+
+valgrind --tool=callgrind ./build/test/benchmark/benchmarks --benchmark_filter="boost.+init/512"
    #+end_src
 ** massif (memory allocations)
    massif-visualizer tool
