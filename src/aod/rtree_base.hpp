@@ -231,6 +231,7 @@ public:
 
   #ifdef DEBUG
   bool has_duplicate_nodes();
+  bool has_duplicate_entries();
   bool validate_mbrs();
   bool validate_mbrs(Eid e); // could be const but ..
   #endif

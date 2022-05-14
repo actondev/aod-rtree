@@ -1087,6 +1087,34 @@ bool RtreeBase::has_duplicate_nodes() {
   return traverse(m_root_id);
 }
 
+
+bool RtreeBase::has_duplicate_entries() {
+  std::set<id_t> entries;
+
+  std::function<bool(Nid)> traverse = [&](Nid n) {
+    Node &node = get_node(n);
+
+    for (int i = 0; i < node.count; ++i) {
+      Eid e = get_node_entry(n, i);
+
+      if (entries.count(e.id) > 0) {
+        cout << "Entry " << e << " already in the container" << endl;
+        return true;
+      }
+      entries.insert(e.id);
+
+      Entry &entry = get_entry(e);
+      if (node.is_internal() && traverse(entry.child_id)) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  return traverse(m_root_id);
+}
+
+
 #endif // debug
 
 } // namespace aod
