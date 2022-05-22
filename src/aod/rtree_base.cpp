@@ -103,20 +103,11 @@ inline void RtreeBase::set_node_entry(Nid n, int idx, Eid e) {
 // TODO noexcept? inline has a great impact in performance!
 // Especially when used as a (statically) linked lib vs just
 // compiling together the sources.
-inline RtreeBase::ELEMTYPE &RtreeBase::rect_low_rw(const Rid &r, int dim) {
+inline RtreeBase::ELEMTYPE &RtreeBase::rect_low_rw(const Rid r, const int dim) {
   return m_rects_low[r.id * m_dims + dim];
 }
 
-inline RtreeBase::ELEMTYPE &RtreeBase::rect_high_rw(const Rid &r, int dim) {
-  return m_rects_high[r.id * m_dims + dim];
-}
-// const ref vs value? makes no difference I guess
-inline const RtreeBase::ELEMTYPE RtreeBase::rect_low_ro(const Rid &r,
-                                                        int dim) const {
-  return m_rects_low[r.id * m_dims + dim];
-}
-inline const RtreeBase::ELEMTYPE RtreeBase::rect_high_ro(const Rid &r,
-                                                         int dim) const {
+inline RtreeBase::ELEMTYPE &RtreeBase::rect_high_rw(const Rid r, const int dim) {
   return m_rects_high[r.id * m_dims + dim];
 }
 

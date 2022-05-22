@@ -142,10 +142,16 @@ class RtreeBase {
   const Entry &get_entry(Eid e) const;
 
   ELEMTYPE rect_volume(Rid) const;
-  const ELEMTYPE rect_low_ro(const Rid &r, int dim) const;
-  const ELEMTYPE rect_high_ro(const Rid &r, int dim) const;
-  ELEMTYPE &rect_low_rw(const Rid &r, int dim);
-  ELEMTYPE &rect_high_rw(const Rid &r, int dim);
+  inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
+    return m_rects_low[r.id * m_dims + dim];
+  }
+  inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
+    return m_rects_high[r.id * m_dims + dim];
+  }
+  // NB: these are defined as inline in the cpp, so they cannot be
+  // used from the outside. Not sure how to deal with this
+  ELEMTYPE &rect_low_rw(const Rid r, const int dim);
+  ELEMTYPE &rect_high_rw(const Rid r, const int dim);
   bool rect_contains(Rid bigger, Rid smaller) const;
   bool rects_overlap(Rid, Rid) const;
 
