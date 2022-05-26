@@ -12,7 +12,7 @@ PRE class Rtree : public RtreeBase {
   std::vector<DATATYPE> m_data;
   void set_data(Did did, const DATATYPE &data);
 
-  const DATATYPE &get_data(Did did);
+  const DATATYPE &get_data(Did did) const;
 
  public:
   using RtreeBase::RtreeBase;
@@ -24,11 +24,11 @@ PRE class Rtree : public RtreeBase {
   using SearchCbExt = std::function<bool(const DATATYPE &, const Rect&)>;
   void insert(const Vec &low, const Vec &high, const DATATYPE &data);
 
-  std::vector<DATATYPE> search(const Vec &low, const Vec &high);
+  std::vector<DATATYPE> search(const Vec &low, const Vec &high) const;
 
-  int search(const Vec &low, const Vec &high, std::vector<DATATYPE> &results);
-  int search(const Vec &low, const Vec &high, SearchCb);
-  int search(const Vec &low, const Vec &high, SearchCbExt);
+  int search(const Vec &low, const Vec &high, std::vector<DATATYPE> &results) const;
+  int search(const Vec &low, const Vec &high, SearchCb) const;
+  int search(const Vec &low, const Vec &high, SearchCbExt) const;
 
   int remove(const Vec &low, const Vec &high, Predicate);
   int remove(const Vec &low, const Vec &high, PredicateExt);
@@ -41,7 +41,7 @@ PRE void QUAL::set_data(Did did, const DATATYPE &data) {
   m_data[did.id] = data;
 }
 
-PRE const DATATYPE &QUAL::get_data(Did did) {
+PRE const DATATYPE &QUAL::get_data(Did did) const {
   ASSERT(did);
   return m_data[did.id];
 };
@@ -53,16 +53,16 @@ PRE void QUAL::insert(const Vec &low, const Vec &high, const DATATYPE &data) {
   RtreeBase::insert(low, high, did);
 }
 
-PRE std::vector<DATATYPE> QUAL::search(const Vec &low, const Vec &high) {
+PRE std::vector<DATATYPE> QUAL::search(const Vec &low, const Vec &high) const {
   std::vector<DATATYPE> results;
   search(low, high, results);
   return results;
 }
 
 PRE int QUAL::search(const Vec &low, const Vec &high,
-                      std::vector<DATATYPE> &results) {
+                      std::vector<DATATYPE> &results) const {
   results.clear();
-  RtreeBase::SearchCb cb = [&](Eid e) {
+  RtreeBase::SearchCb cb = [&results, this](Eid e) {
     const Entry &entry = get_entry(e);
     results.push_back(get_data(entry.data_id));
     return true;
@@ -70,7 +70,7 @@ PRE int QUAL::search(const Vec &low, const Vec &high,
   return RtreeBase::search(low, high, cb);
 }
 
-PRE int QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
+PRE int QUAL::search(const Vec &low, const Vec &high, SearchCb cb) const {
   RtreeBase::SearchCb base_cb = [&](Eid e) {
     const Entry& entry = get_entry(e);
     const DATATYPE &data = get_data(entry.data_id);
@@ -79,18 +79,18 @@ PRE int QUAL::search(const Vec &low, const Vec &high, SearchCb cb) {
   return RtreeBase::search(low, high, base_cb);
 }
 
-PRE int QUAL::search(const Vec &low, const Vec &high, SearchCbExt cb) {
-  Rect rect;
-  rect.low.resize(m_dims);
-  rect.high.resize(m_dims);
+PRE int QUAL::search(const Vec &low, const Vec &high, SearchCbExt cb) const {
+  Rect callback_rect;
+  callback_rect.low.resize(m_dims);
+  callback_rect.high.resize(m_dims);
   RtreeBase::SearchCb base_cb = [&](Eid e) {
     const Entry& entry = get_entry(e);
     const DATATYPE &data = get_data(entry.data_id);
     for(int i=0; i<m_dims; ++i) {
-      rect.low[i] = rect_low_ro(entry.rect_id, i);
-      rect.high[i] = rect_high_ro(entry.rect_id, i);
+      callback_rect.low[i] = rect_low_ro(entry.rect_id, i);
+      callback_rect.high[i] = rect_high_ro(entry.rect_id, i);
     }
-    return cb(data, rect);
+    return cb(data, callback_rect);
   };
   return RtreeBase::search(low, high, base_cb);
 }

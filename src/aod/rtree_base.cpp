@@ -87,12 +87,6 @@ inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
   return m_nodes[n.id];
 }
 
-// TODO inline but available to rtree.hpp including rtree_base.hpp also?
-// RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
-// inline RtreeBase::Entry &RtreeBase::get_entry(Eid e) { return m_entries[e.id]; }
-inline const RtreeBase::Entry &RtreeBase::get_entry(Eid e) const {
-  return m_entries[e.id];
-}
 inline RtreeBase::Eid RtreeBase::get_node_entry(Nid n, int idx) const {
   return m_node_entries[n.id * M + idx];
 }
@@ -131,6 +125,17 @@ inline bool RtreeBase::rect_contains(Rid bigger, Rid smaller) const {
   }
   return true;
 }
+
+inline bool RtreeBase::rects_overlap(const RectRo& a, Rid b) const {
+  for (int index = 0; index < m_dims; ++index) {
+    if (rect_low_ro(a, index) > rect_high_ro(b, index) ||
+        rect_low_ro(b, index) > rect_high_ro(a, index)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
   for (int index = 0; index < m_dims; ++index) {
     if (rect_low_ro(a, index) > rect_high_ro(b, index) ||
@@ -141,16 +146,30 @@ inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
   return true;
 }
 
+
 inline void RtreeBase::copy_rect(Rid src, Rid dst) {
   for (int i = 0; i < m_dims; ++i) {
     rect_low_rw(dst, i) = rect_low_ro(src, i);
     rect_high_rw(dst, i) = rect_high_ro(src, i);
   }
 }
+void RtreeBase::copy_rect(Rid src, Rect& dst) const {
+  for (int i = 0; i < m_dims; ++i) {
+    dst.low[i] = rect_low_ro(src, i);
+    dst.high[i] = rect_high_ro(src, i);
+  }
+}
 inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
   for (int i = 0; i < m_dims; i++) {
     rect_low_rw(dst, i) = Min(rect_low_ro(a, i), rect_low_ro(b, i));
     rect_high_rw(dst, i) = Max(rect_high_ro(a, i), rect_high_ro(b, i));
+  }
+}
+
+void RtreeBase::absorb_rect(Rid src, Rect& dst) const {
+  for (int i = 0; i < m_dims; i++) {
+    dst.low[i] = Min(dst.low[i], rect_low_ro(src, i));
+    dst.high[i] = Max(dst.high[i], rect_high_ro(src, i));
   }
 }
 
@@ -607,7 +626,7 @@ RtreeBase::Seeds RtreeBase::pick_seeds(const std::vector<Eid> &entries) {
 
 size_t RtreeBase::size() { return m_size; }
 
-std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) {
+std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) const {
   std::vector<Eid> res;
 
   search(low, high, res);
@@ -615,46 +634,37 @@ std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) {
 }
 
 int RtreeBase::search(const Vec &low, const Vec &high,
-                      std::vector<Eid> &results) {
+                      std::vector<Eid> &results) const {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
-  for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(m_temp_rect, i) = low[i];
-    rect_high_rw(m_temp_rect, i) = high[i];
-  }
+
   SearchCb cb = [&results](const Eid &e) {
     results.push_back(e);
     return true;
   };
 
   int found_count = 0;
-  search(m_root_id, m_temp_rect, found_count, cb);
+  RectRo r{low, high};
+  search(m_root_id, r, found_count, cb);
   return found_count;
 }
 
-int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) {
+int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) const {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
-  for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(m_temp_rect, i) = low[i];
-    rect_high_rw(m_temp_rect, i) = high[i];
-  }
+
   int found_count = 0;
-  search(m_root_id, m_temp_rect, found_count, cb);
+  RectRo r{low, high};
+  search(m_root_id, r, found_count, cb);
   return found_count;
 }
 
-bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {
+bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) const {
   const Node &node = get_node(n);
   if (node.is_internal()) {
     for (int i = 0; i < node.count; ++i) {
       const Eid e = get_node_entry(n, i);
       const Entry &entry = get_entry(e);
-      // hm, though I could use rect_contains, but I may be asking for a big
-      // rect (search), not a specific rect I have inserted thus, the entry rect
-      // (in this case) can not contain the query rect
-      // TODO different modes for search? When asking for only one rect (or eg
-      // querying a point rect), then I should use rect_contains
       if (rects_overlap(r, entry.rect_id)) {
         if (!search(entry.child_id, r, found_count, cb)) {
           // stop searching
@@ -682,7 +692,7 @@ bool RtreeBase::search(Nid n, Rid r, int &found_count, SearchCb cb) {
 }
 
 // TODO could be const but I'm using copy_rect & combine_rects
-RtreeBase::Rect RtreeBase::bounds() {
+RtreeBase::Rect RtreeBase::bounds() const {
   Rect res;
   res.low.resize(m_dims, 0);
   res.high.resize(m_dims, 0);
@@ -691,15 +701,10 @@ RtreeBase::Rect RtreeBase::bounds() {
     return res;
 
   const Entry &entry0 = get_entry(get_node_entry(m_root_id, 0));
-  copy_rect(entry0.rect_id, m_temp_rect);
+  copy_rect(entry0.rect_id, res);
   for (int i = 0; i < root.count; ++i) {
     const Entry &entry = get_entry(get_node_entry(m_root_id, i));
-    combine_rects(entry.rect_id, m_temp_rect, m_temp_rect);
-  }
-
-  for (int i = 0; i < m_dims; ++i) {
-    res.low[i] = rect_low_ro(m_temp_rect, i);
-    res.high[i] = rect_high_ro(m_temp_rect, i);
+    absorb_rect(entry.rect_id, res);
   }
 
   return res;
@@ -721,7 +726,7 @@ void RtreeBase::offset(const Vec &offset) {
 
 void RtreeBase::clear() { init(); }
 
-int RtreeBase::dimensions() { return m_dims; }
+int RtreeBase::dimensions() const { return m_dims; }
 
 int RtreeBase::remove(const Vec &low, const Vec &high) {
   Predicate pred = [](Eid) { return true; };
@@ -731,17 +736,15 @@ int RtreeBase::remove(const Vec &low, const Vec &high) {
 int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
-  for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(m_temp_rect, i) = low[i];
-    rect_high_rw(m_temp_rect, i) = high[i];
-  }
+
+  RectRo r{low,high};
   int removed = 0;
   Traversals remove_traverals;
   Traversal cur_traversal;
   TraversalEntry p;
   p.node = m_root_id;
   cur_traversal.push_back(p);
-  remove(m_root_id, m_temp_rect, removed, remove_traverals, cur_traversal,
+  remove(m_root_id, r, removed, remove_traverals, cur_traversal,
          pred);
 
   // sorting remove_traverals: longer traverals first, thus leaf node
@@ -756,7 +759,7 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
   return removed;
 }
 
-void RtreeBase::remove(Nid n, Rid r, int &counter, Traversals &traversals,
+void RtreeBase::remove(Nid n, const RectRo& r, int &counter, Traversals &traversals,
                        const Traversal &cur_traversal, Predicate cb) {
   Node &node = get_node(n);
   if (node.is_internal()) {

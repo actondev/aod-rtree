@@ -18,6 +18,12 @@ class RtreeBase {
     Vec low;
     Vec high;
   };
+
+  /// Rect read only
+  struct RectRo {
+    const Vec& low;
+    const Vec& high;
+  };
   using id_t = uint32_t;
 
   struct Rid;
@@ -137,9 +143,9 @@ class RtreeBase {
 
   Node &get_node(Nid n);
   const Node &get_node(Nid n) const;
-  // Entry &get_entry(Eid e);
+
   inline Entry &get_entry(Eid e) { return m_entries[e.id]; }
-  const Entry &get_entry(Eid e) const;
+  inline const Entry &get_entry(Eid e) const { return m_entries[e.id]; }
 
   ELEMTYPE rect_volume(Rid) const;
   inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
@@ -148,11 +154,19 @@ class RtreeBase {
   inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
     return m_rects_high[r.id * m_dims + dim];
   }
+  inline ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const {
+    return r.low[dim];
+  }
+  inline const ELEMTYPE rect_high_ro(const RectRo& r, const int dim) const {
+    return r.high[dim];
+  }
   // NB: these are defined as inline in the cpp, so they cannot be
   // used from the outside. Not sure how to deal with this
   ELEMTYPE &rect_low_rw(const Rid r, const int dim);
   ELEMTYPE &rect_high_rw(const Rid r, const int dim);
   bool rect_contains(Rid bigger, Rid smaller) const;
+
+  bool rects_overlap(const RectRo&, Rid) const;
   bool rects_overlap(Rid, Rid) const;
 
   std::string rect_to_string(Rid);
@@ -164,12 +178,13 @@ class RtreeBase {
   void entry_to_string(Eid, int level, int spaces, std::ostream &);
 
   void copy_rect(Rid src, Rid dst);
+  void copy_rect(Rid src, Rect& dst) const;
 
   void insert(const Vec &low, const Vec &high, Did);
 
-  std::vector<Eid> search(const Vec &low, const Vec &high);
-  int search(const Vec &low, const Vec &high, std::vector<Eid> &results);
-  int search(const Vec &low, const Vec &high, SearchCb cb);
+  std::vector<Eid> search(const Vec &low, const Vec &high) const;
+  int search(const Vec &low, const Vec &high, std::vector<Eid> &results) const;
+  int search(const Vec &low, const Vec &high, SearchCb cb) const;
   std::string to_string();
 
   void reinsert_entry(Eid e);
@@ -188,7 +203,7 @@ class RtreeBase {
                           const Seeds &seeds);
   void distribute_entries_naive(Nid n, Nid nn, std::vector<Eid> entries);
 
-  bool search(Nid, Rid, int &found_count, SearchCb);
+  bool search(Nid, const RectRo&, int &found_count, SearchCb) const;
 
   /// insert entry into leaf node: if a split occured, returns a valid new node
   Nid insert(Nid, Eid);
@@ -205,7 +220,7 @@ class RtreeBase {
   /// entries. Propagate node elimination upward as necessary. Adjust
   /// all covering rectagles on the path to the root, making them
   /// smaller if possible
-  void remove(Nid n, Rid r, int &removed, Traversals &,
+  void remove(Nid n, const RectRo& r, int &removed, Traversals &,
               const Traversal &cur_traversal, Predicate cb);
 
   bool remove_node_entry(Nid n, Eid e);
@@ -219,6 +234,7 @@ class RtreeBase {
   void count(Nid n, int &); // recursive
 
   void combine_rects(Rid a, Rid b, Rid dst);
+  void absorb_rect(Rid a, Rect& dst) const;
   void update_entry_rect(Eid e);
 
   void init();
@@ -231,8 +247,8 @@ public:
   int remove(const Vec &low, const Vec &high);
   int remove(const Vec &low, const Vec &high, Predicate);
   void clear();
-  int dimensions();
-  Rect bounds();
+  int dimensions() const;
+  Rect bounds() const;
   void offset(const Vec&);
 
   #ifdef DEBUG
