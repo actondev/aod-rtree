@@ -5,6 +5,7 @@
 #include <limits>
 #include <ostream>
 #include <vector>
+#include <array>
 #include <assert.h>
 #define ASSERT assert
 
