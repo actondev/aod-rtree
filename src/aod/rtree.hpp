@@ -36,6 +36,12 @@ PRE class Rtree : public RtreeBase {
 
   int remove(const Vec &low, const Vec &high, Predicate);
   int remove(const Vec &low, const Vec &high, PredicateExt);
+
+  template <typename Fn>
+  void with_transaction(Fn fn) {
+    Transaction transaction(this);
+    fn(*this);
+  }
 };
 
 // implementation

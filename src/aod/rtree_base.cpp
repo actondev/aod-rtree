@@ -62,15 +62,22 @@ template <typename T> inline immer::vector<T> persistent(immer::vector_transient
 
 
 RtreeBase::Transaction::Transaction(RtreeBase* tree) : tree(tree) {
+  if(tree->m_is_in_transaction) return;
+
+  is_active = true;
+  tree->m_is_in_transaction = true;
   tree->m_state.low = transient(tree->m_rects_low);
   tree->m_state.high = transient(tree->m_rects_high);
 }
 
 RtreeBase::Transaction::~Transaction() {
+  if(!is_active) return;
+
   assign(tree->m_rects_low, persistent(tree->m_state.low.value()));
   assign(tree->m_rects_high, persistent(tree->m_state.high.value()));
 
   tree->m_state.reset();
+  tree->m_is_in_transaction = false;
 }
 
 // template <typename T> void container_set(std::vector<T> &vec, size_t idx, const T& value) {vec[idx] = value;}

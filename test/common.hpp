@@ -88,6 +88,17 @@ aod::Rtree<Point> grid_to_aod_rtree(const Grid &grid) {
   return tree;
 }
 
+aod::Rtree<Point> grid_to_aod_rtree_with_transaction(const Grid &grid) {
+  aod::Rtree<Point> tree(grid.dims);
+  tree.with_transaction([&grid](aod::Rtree<Point> &tree) {
+    for (auto &el : grid.points) {
+      tree.insert(el, el, el);
+    }
+  });
+
+  return tree;
+}
+
 const int benchmark_size = 200;
 const int searches = 10000;
 const char* search_str = "search x10000 ";

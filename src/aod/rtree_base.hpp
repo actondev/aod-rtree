@@ -151,11 +151,15 @@ class RtreeBase {
 
   struct Transaction {
     RtreeBase* tree;
+    bool is_active{false};
 
     Transaction() = delete;
     Transaction(RtreeBase* tree);
     ~Transaction();
   };
+
+  bool m_is_in_transaction{false};
+
   friend Transaction::Transaction(RtreeBase* tree);
 
   State m_state;

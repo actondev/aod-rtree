@@ -119,6 +119,16 @@ TEST_CASE("aod::Rtree 200x200", "[.benchmark]") {
   }
 }
 
+TEST_CASE("aod::Rtree 200x200 with transaction", "[benchmark]") {
+  int size = benchmark_size;
+  auto grid = make_grid(size, 2);
+  auto t1 = high_resolution_clock::now();
+  aod::Rtree<Point> tree = grid_to_aod_rtree_with_transaction(grid);
+  auto t2 = high_resolution_clock::now();
+  WARN("init with transaction size " << size << " took " << duration_ms(t2 - t1) << "ms");
+  REQUIRE(tree.size() == size * size);
+}
+
 TEST_CASE("aod::Rtree 8x8", "[aod::Rtree]") {
   const int size = 8;
   auto grid = make_grid(size);
