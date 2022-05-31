@@ -140,8 +140,8 @@ class RtreeBase {
   std::vector<Entry> m_entries;
 
   struct State {
-    std::optional<immer::vector_transient<ELEMTYPE>> low;
-    std::optional<immer::vector_transient<ELEMTYPE>> high;
+    immer::vector_transient<ELEMTYPE> low;
+    immer::vector_transient<ELEMTYPE> high;
 
     void reset() {
       *this = State {};
@@ -186,11 +186,11 @@ class RtreeBase {
   inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
     // return m_rects_low[r.id * m_dims + dim];
     const auto idx = r.id * m_dims + dim;
-    return m_state.low.value()[idx];
+    return m_state.low[idx];
   }
   inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
     const auto idx = r.id * m_dims + dim;
-    return m_state.high.value()[idx];
+    return m_state.high[idx];
     // return m_rects_high[r.id * m_dims + dim];
   }
   inline ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const {

@@ -71,8 +71,8 @@ RtreeBase::Transaction::Transaction(const RtreeBase* tree_) : tree(const_cast<Rt
 RtreeBase::Transaction::~Transaction() {
   if(!is_active) return;
 
-  assign(tree->m_rects_low, persistent(tree->m_state.low.value()));
-  assign(tree->m_rects_high, persistent(tree->m_state.high.value()));
+  assign(tree->m_rects_low, persistent(tree->m_state.low));
+  assign(tree->m_rects_high, persistent(tree->m_state.high));
 
   tree->m_state.reset();
   tree->m_is_in_transaction = false;
@@ -117,8 +117,8 @@ std::ostream &operator<<(std::ostream &os, const RtreeBase::Traversal &tr) {
 
 RtreeBase::Rid RtreeBase::make_rect_id() {
   Rid res{m_rects_count++};
-  resize(m_state.low.value(), m_rects_count * m_dims, 0.0);
-  resize(m_state.high.value(), m_rects_count * m_dims, 0.0);
+  resize(m_state.low, m_rects_count * m_dims, 0.0);
+  resize(m_state.high, m_rects_count * m_dims, 0.0);
 
   return res;
 }
@@ -214,8 +214,10 @@ inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
 
 inline void RtreeBase::copy_rect(Rid src, Rid dst) {
   for (int i = 0; i < m_dims; ++i) {
-    container_set(m_state.low.value(), rect_index(dst, i), rect_low_ro(src, i));
-    container_set(m_state.high.value(), rect_index(dst, i), rect_high_ro(src, i));
+    container_set(m_state.low
+                  , rect_index(dst, i), rect_low_ro(src, i));
+    container_set(m_state.high
+                  , rect_index(dst, i), rect_high_ro(src, i));
   }
 }
 void RtreeBase::copy_rect(Rid src, Rect& dst) const {
@@ -227,11 +229,13 @@ void RtreeBase::copy_rect(Rid src, Rect& dst) const {
 inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
   combine_rects_count++;
   for (int i = 0; i < m_dims; i++) {
-    container_set(m_state.low.value(), rect_index(dst, i), Min(
+    container_set(m_state.low
+                  , rect_index(dst, i), Min(
         rect_low_ro(a, i),
         rect_low_ro(b, i)
                                                              ));
-    container_set(m_state.high.value(), rect_index(dst, i), Max( 
+    container_set(m_state.high
+                  , rect_index(dst, i), Max(
         rect_high_ro(a, i),  //
         rect_high_ro(b, i)
                                                                ));
@@ -383,8 +387,10 @@ void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
 
 
   for (int i = 0; i < m_dims; ++i) {
-    container_set(m_state.low.value(), rect_index(r, i), low[i]);
-    container_set(m_state.high.value(), rect_index(r, i), high[i]);
+    container_set(m_state.low
+                  , rect_index(r, i), low[i]);
+    container_set(m_state.high
+                  , rect_index(r, i), high[i]);
   }
 
   m_traversal.clear();
@@ -805,8 +811,12 @@ void RtreeBase::offset(const Vec &offset) {
 
   for (int i = 0; i < m_rects_low.size(); i += m_dims) {
     for (int d = 0; d < m_dims; ++d) {
-      container_set(m_state.low.value(), i+d, m_state.low.value()[i+d] + offset[d]);
-      container_set(m_state.high.value(), i+d, m_state.high.value()[i+d] + offset[d]);
+      container_set(m_state.low
+                    , i+d, m_state.low
+                                   [i+d] + offset[d]);
+      container_set(m_state.high
+                    , i+d, m_state.high
+                                   [i+d] + offset[d]);
     }
   }
 }
@@ -1049,6 +1059,7 @@ std::string RtreeBase::to_string() {
 }
 
 void RtreeBase::to_string(int spaces, std::ostream &os) {
+  Transaction transaction(this);
   node_to_string(m_root_id, 0, spaces, os);
 }
 
