@@ -4,6 +4,9 @@ project('aod-rtree', 'cpp',
 	],
        )
 
+immer_proj = subproject('immer')
+immer_dep = immer_proj.get_variable('immer_dep')
+
 include_dirs = include_directories('src')
 
 sources = files(
@@ -23,11 +26,13 @@ aod_rtree = static_library('aod-rtree',
                 include_directories:  [
                   include_dirs,
                 ],
+                dependencies: [immer_dep],
                 cpp_args: cpp_args
 )
 
 aod_rtree_dep = declare_dependency(
   include_directories: include_dirs,
+  dependencies: [immer_dep],
   # performance impact when using linked version?
   # comparing by removing link_with & using sources
   link_with: aod_rtree,

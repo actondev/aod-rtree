@@ -1,5 +1,7 @@
 #include "./rtree_base.hpp"
 
+#include <immer/vector_transient.hpp>
+
 #include <iostream>
 #include <set>
 #include <sstream>
@@ -20,8 +22,45 @@ namespace aod {
 #ifdef DEBUG
 using std::cout;
 #endif
+using std::cout;
 
 using std::endl;
+
+int combine_rects_count = 0;
+
+template <typename T>
+std::vector<T>& resize(std::vector<T> &vec, size_t new_size) {
+  vec.resize(new_size);
+  return vec;
+}
+
+template <typename T> void assign(T &where, const T &what) {
+  if (&where != &what) {
+    where = what;
+  }
+}
+
+template <typename T>
+void resize(immer::vector_transient<T> &trans, size_t new_size,
+                        T default_value = T{}) {
+  if (new_size < trans.size()) {
+    trans.take(new_size);
+  }
+  else {
+    while (trans.size() < new_size) {
+      trans.push_back(default_value);
+    }
+  }
+}
+
+template <typename T> inline std::vector<T> &transient(std::vector<T> &x) { return x;}
+template <typename T> inline std::vector<T> &persistent(std::vector<T> &x) { return x;}
+
+template <typename T> inline auto transient(immer::vector<T> &x) { return x.transient();}
+template <typename T> inline immer::vector<T> persistent(immer::vector_transient<T> &x) { return x.persistent();}
+
+// template <typename T> void container_set(std::vector<T> &vec, size_t idx, const T& value) {vec[idx] = value;}
+template <typename T> inline void container_set(immer::vector_transient<T> &vec, size_t idx, const T value) {vec.set(idx, value);}
 
 std::ostream &operator<<(std::ostream &os, const RtreeBase::Eid &id) {
   os << "Eid{" << id.id << "}";
@@ -59,8 +98,8 @@ std::ostream &operator<<(std::ostream &os, const RtreeBase::Traversal &tr) {
 
 RtreeBase::Rid RtreeBase::make_rect_id() {
   Rid res{m_rects_count++};
-  m_rects_low.resize(m_rects_count * m_dims, 0);
-  m_rects_high.resize(m_rects_count * m_dims, 0);
+  resize(m_state.low.value(), m_rects_count * m_dims, 0.0);
+  resize(m_state.high.value(), m_rects_count * m_dims, 0.0);
 
   return res;
 }
@@ -73,6 +112,7 @@ RtreeBase::Nid RtreeBase::make_node_id() {
 RtreeBase::Eid RtreeBase::make_entry_id() {
   Eid e{m_entries_count++};
   m_entries.resize(m_entries_count);
+  
   Entry &entry = get_entry(e);
   entry.rect_id = make_rect_id();
   return e;
@@ -97,13 +137,19 @@ inline void RtreeBase::set_node_entry(Nid n, int idx, Eid e) {
 // TODO noexcept? inline has a great impact in performance!
 // Especially when used as a (statically) linked lib vs just
 // compiling together the sources.
-inline RtreeBase::ELEMTYPE &RtreeBase::rect_low_rw(const Rid r, const int dim) {
-  return m_rects_low[r.id * m_dims + dim];
-}
+// inline RtreeBase::ELEMTYPE &RtreeBase::rect_low_rw(const Rid r, const int dim) {
+//   return m_rects_low[r.id * m_dims + dim];
+// }
 
-inline RtreeBase::ELEMTYPE &RtreeBase::rect_high_rw(const Rid r, const int dim) {
-  return m_rects_high[r.id * m_dims + dim];
-}
+// inline RtreeBase::ELEMTYPE &RtreeBase::rect_high_rw(const Rid r, const int dim) {
+//   return m_rects_high[r.id * m_dims + dim];
+// }
+
+
+
+// inline RtreeBase::ELEMTYPE &RtreeBase::rect_high_rw(const Rid r, const int dim) {
+//   return m_rects_high[r.id * m_dims + dim];
+// }
 
 inline RtreeBase::ELEMTYPE RtreeBase::rect_volume(Rid r) const {
   ELEMTYPE volume = (ELEMTYPE)1;
@@ -149,8 +195,8 @@ inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
 
 inline void RtreeBase::copy_rect(Rid src, Rid dst) {
   for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(dst, i) = rect_low_ro(src, i);
-    rect_high_rw(dst, i) = rect_high_ro(src, i);
+    container_set(m_state.low.value(), rect_index(dst, i), rect_low_ro(src, i));
+    container_set(m_state.high.value(), rect_index(dst, i), rect_high_ro(src, i));
   }
 }
 void RtreeBase::copy_rect(Rid src, Rect& dst) const {
@@ -160,9 +206,16 @@ void RtreeBase::copy_rect(Rid src, Rect& dst) const {
   }
 }
 inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
+  combine_rects_count++;
   for (int i = 0; i < m_dims; i++) {
-    rect_low_rw(dst, i) = Min(rect_low_ro(a, i), rect_low_ro(b, i));
-    rect_high_rw(dst, i) = Max(rect_high_ro(a, i), rect_high_ro(b, i));
+    container_set(m_state.low.value(), rect_index(dst, i), Min(
+        rect_low_ro(a, i),
+        rect_low_ro(b, i)
+                                                             ));
+    container_set(m_state.high.value(), rect_index(dst, i), Max( 
+        rect_high_ro(a, i),  //
+        rect_high_ro(b, i)
+                                                               ));
   }
 }
 
@@ -188,8 +241,8 @@ void RtreeBase::init() {
   m_data_count = 0;
   m_size = 0;
 
-  m_rects_low.resize(0);
-  m_rects_high.resize(0);
+  // m_rects_low.resize(0);
+  // m_rects_high.resize(0);
   m_nodes.resize(0);
   m_node_entries.resize(0);
   m_entries.resize(0);
@@ -294,16 +347,21 @@ void RtreeBase::update_entry_rect(Eid e) {
 }
 
 void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
+  m_state.low = transient(m_rects_low);
+  m_state.high = transient(m_rects_high);
+
   ++m_size;
+  // 1
   const Eid e = make_entry_id(); // also sets the rect
   Entry &entry = get_entry(e);
   entry.data_id = did;
 
   const Rid r = entry.rect_id;
 
+
   for (int i = 0; i < m_dims; ++i) {
-    rect_low_rw(r, i) = low[i];
-    rect_high_rw(r, i) = high[i];
+    container_set(m_state.low.value(), rect_index(r, i), low[i]);
+    container_set(m_state.high.value(), rect_index(r, i), high[i]);
   }
 
   m_traversal.clear();
@@ -311,6 +369,13 @@ void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
   const Nid nn = insert(n, e);
 
   adjust_tree(m_traversal, e, nn);
+
+  // cout << "inserted, now comb rects call count " << combine_rects_count << endl;
+  combine_rects_count = 0;
+
+  assign(m_rects_low, persistent(m_state.low.value()));
+  assign(m_rects_high, persistent(m_state.high.value()));
+  m_state.reset();
 }
 
 void RtreeBase::reinsert_entry(Eid e) {
@@ -714,14 +779,21 @@ RtreeBase::Rect RtreeBase::bounds() const {
 void RtreeBase::offset(const Vec &offset) {
   ASSERT(offset.size() == m_dims);
   ASSERT(m_rects_low.size() == m_rects_high.size());
+
+  m_state.low = transient(m_rects_low);
+  m_state.high = transient(m_rects_high);
+
   for (int i = 0; i < m_rects_low.size(); i += m_dims) {
     for (int d = 0; d < m_dims; ++d) {
-      m_rects_low[i + d] += offset[d];
-    }
-    for (int d = 0; d < m_dims; ++d) {
-      m_rects_high[i + d] += offset[d];
+      container_set(m_state.low.value(), i+d, m_state.low.value()[i+d] + offset[d]);
+      container_set(m_state.high.value(), i+d, m_state.high.value()[i+d] + offset[d]);
     }
   }
+
+  assign(m_rects_low, persistent(m_state.low.value()));
+  assign(m_rects_high, persistent(m_state.high.value()));
+
+  m_state.reset();
 }
 
 void RtreeBase::clear() { init(); }
@@ -982,7 +1054,7 @@ void RtreeBase::rect_to_string(Rid rid, std::ostream &os) {
     if (i == 0) {
       os << "{";
     }
-    os << rect_high_rw(rid, i);
+    os << rect_high_ro(rid, i);
     if (i != m_dims - 1) {
       os << ", ";
     } else {

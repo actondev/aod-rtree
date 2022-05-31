@@ -1,6 +1,7 @@
 #pragma once
 
 #include "./rtree_base.hpp"
+#include <immer/vector.hpp>
 namespace aod {
 
 #define PRE template <class DATATYPE>
@@ -9,7 +10,8 @@ namespace aod {
 // inheriting from the base class: minimizing the header-only template
 PRE class Rtree : public RtreeBase {
  private:
-  std::vector<DATATYPE> m_data;
+  // std::vector<DATATYPE> m_data;
+  immer::vector<DATATYPE> m_data;
   void set_data(Did did, const DATATYPE &data);
 
   const DATATYPE &get_data(Did did) const;
@@ -20,8 +22,10 @@ PRE class Rtree : public RtreeBase {
 
   using Predicate = std::function<bool(const DATATYPE &)>;
   using PredicateExt = std::function<bool(const DATATYPE &, const Rect&)>;
+  
   using SearchCb = std::function<bool(const DATATYPE &)>;
   using SearchCbExt = std::function<bool(const DATATYPE &, const Rect&)>;
+  
   void insert(const Vec &low, const Vec &high, const DATATYPE &data);
 
   std::vector<DATATYPE> search(const Vec &low, const Vec &high) const;
@@ -38,7 +42,9 @@ PRE class Rtree : public RtreeBase {
 
 PRE void QUAL::set_data(Did did, const DATATYPE &data) {
   ASSERT(did);
-  m_data[did.id] = data;
+  // auto trans = m_data.transient();
+  m_data = m_data.push_back(data);
+  // m_data[did.id] = data;
 }
 
 PRE const DATATYPE &QUAL::get_data(Did did) const {
@@ -48,7 +54,7 @@ PRE const DATATYPE &QUAL::get_data(Did did) const {
 
 PRE void QUAL::insert(const Vec &low, const Vec &high, const DATATYPE &data) {
   const Did did = make_data_id();
-  m_data.resize(m_data_count);
+  // m_data.resize(m_data_count);
   set_data(did, data);
   RtreeBase::insert(low, high, did);
 }

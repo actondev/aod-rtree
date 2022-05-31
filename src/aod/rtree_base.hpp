@@ -7,6 +7,9 @@
 #include <vector>
 #include <array>
 #include <assert.h>
+#include <immer/vector.hpp>
+#include <immer/vector_transient.hpp>
+#include <optional>
 #define ASSERT assert
 
 namespace aod {
@@ -56,8 +59,8 @@ class RtreeBase {
   
   struct Entry {
   Rid rect_id;
-  Nid child_id;
-  Did data_id;
+    Nid child_id;
+    Did data_id;
 };
   struct TraversalEntry {
   Eid entry;
@@ -128,11 +131,25 @@ class RtreeBase {
   mutable Partition m_partition;
   mutable Traversal m_traversal;
 
-  std::vector<ELEMTYPE> m_rects_low;
-  std::vector<ELEMTYPE> m_rects_high;
+  // std::vector<ELEMTYPE> m_rects_low;
+  // std::vector<ELEMTYPE> m_rects_high;
+  immer::vector<ELEMTYPE> m_rects_low;
+  immer::vector<ELEMTYPE> m_rects_high;
   std::vector<Node> m_nodes;
   std::vector<Eid> m_node_entries;
   std::vector<Entry> m_entries;
+
+  struct State {
+    std::optional<immer::vector_transient<ELEMTYPE>> low;
+    std::optional<immer::vector_transient<ELEMTYPE>> high;
+
+    void reset() {
+      *this = State {};
+    }
+    // immer::vector_transient<ELEMTYPE> m_trans_high; 
+  };
+
+  State m_state;
 
   Rid make_rect_id();
   Nid make_node_id();
@@ -148,12 +165,20 @@ class RtreeBase {
   inline Entry &get_entry(Eid e) { return m_entries[e.id]; }
   inline const Entry &get_entry(Eid e) const { return m_entries[e.id]; }
 
+  size_t rect_index(Rid r, const int dim) const {
+    return r.id * m_dims + dim;
+  }
+
   ELEMTYPE rect_volume(Rid) const;
   inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
-    return m_rects_low[r.id * m_dims + dim];
+    // return m_rects_low[r.id * m_dims + dim];
+    const auto idx = r.id * m_dims + dim;
+    return m_state.low ? m_state.low.value()[idx] : m_rects_low[idx];
   }
   inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
-    return m_rects_high[r.id * m_dims + dim];
+    const auto idx = r.id * m_dims + dim;
+    return m_state.high ? m_state.high.value()[idx] : m_rects_high[idx];
+    // return m_rects_high[r.id * m_dims + dim];
   }
   inline ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const {
     return r.low[dim];
@@ -163,8 +188,8 @@ class RtreeBase {
   }
   // NB: these are defined as inline in the cpp, so they cannot be
   // used from the outside. Not sure how to deal with this
-  ELEMTYPE &rect_low_rw(const Rid r, const int dim);
-  ELEMTYPE &rect_high_rw(const Rid r, const int dim);
+  // ELEMTYPE &rect_low_rw(const Rid r, const int dim);
+  // ELEMTYPE &rect_high_rw(const Rid r, const int dim);
   bool rect_contains(Rid bigger, Rid smaller) const;
 
   bool rects_overlap(const RectRo&, Rid) const;

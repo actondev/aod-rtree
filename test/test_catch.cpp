@@ -11,7 +11,7 @@ RTree<Point, double, 2> grid_to_superliminal_rtree(const Grid &grid) {
   return tree;
 }
 
-TEST_CASE("superliminal RTree 200x200", "[aod::Rtree][benchmark]") {
+TEST_CASE("superliminal RTree 200x200", "[.ignore]") {
   int size = benchmark_size;
   auto grid = make_grid(size, 2);
   auto t1 = high_resolution_clock::now();
@@ -53,7 +53,7 @@ TEST_CASE("superliminal RTree 200x200", "[aod::Rtree][benchmark]") {
   WARN("copy took " << duration_ms(t2 - t1) << " ms ");
 }
 
-TEST_CASE("aod::Rtree 200x200", "[aod::Rtree][benchmark]") {
+TEST_CASE("aod::Rtree 200x200", "[.benchmark]") {
   int size = benchmark_size;
   auto grid = make_grid(size, 2);
   auto t1 = high_resolution_clock::now();
@@ -127,7 +127,7 @@ TEST_CASE("aod::Rtree 8x8", "[aod::Rtree]") {
   aod::Rtree<Point> tree = grid_to_aod_rtree(grid);
   REQUIRE(tree.size() == size * size);
 
-  if (false) {
+  if (true) {
     std::ofstream ofs("aod-rtree-8x8-init.xml", std::ofstream::out);
     ofs << tree.to_xml();
     ofs.close();
@@ -179,6 +179,20 @@ TEST_CASE("aod::Rtree 8x8", "[aod::Rtree]") {
               {6.0, 6.0}, {6.0, 7.0}, {7.0, 6.0}, {7.0, 7.0}};
   REQUIRE_THAT(found, Catch::Matchers::UnorderedEquals(expected));
 }
+
+
+TEST_CASE("aod::Rtree 2x2", "[aod::Rtree][fixme]") {
+  const int size = 2;
+  auto grid = make_grid(size);
+  shuffle_deterministic(grid);
+
+  aod::Rtree<Point> tree = grid_to_aod_rtree(grid);
+  REQUIRE(tree.size() == size * size);
+
+  cout << tree.to_xml() << endl;
+
+}
+
 
 TEST_CASE("aod::Rtree 10x10", "[aod::Rtree]") {
   const int size = 10;
@@ -242,7 +256,8 @@ TEST_CASE("aod::Rtree 10x10", "[aod::Rtree]") {
 }
 
 TEST_CASE("aod::Rtree 5x5 scan", "[aod::Rtree]") {
-  std::vector<int> sizes = {16, 32, 64, 128, 256, 512};
+  std::vector<int> sizes = {16, 32, 64 //, 128, 256, 512
+  };
   std::vector<Point> found;
   for (int size : sizes) {
     auto grid = make_grid(size, 2, true);
@@ -272,7 +287,7 @@ void validate_tree(aod::Rtree<Point> &tree) {
   REQUIRE(tree.has_duplicate_nodes() == false);
 }
 
-TEST_CASE("tree options", "[aod::Rtree]") {
+TEST_CASE("tree options", "[.ignore]") {
   const int size = 200;
   auto t1 = high_resolution_clock::now();
   auto t2 = high_resolution_clock::now();
@@ -314,7 +329,8 @@ TEST_CASE("tree options", "[aod::Rtree]") {
 
 TEST_CASE("aod::Rtree tree validations", "[aod::Rtree]") {
   std::vector<Point> found;
-  std::vector<int> sizes = {16, 32, 64, 128, 256, 512};
+  std::vector<int> sizes = {16, 32, 64 //, 128, 256, 512
+  };
   for (int size : sizes) {
     // cout << " size " << size << endl;
     auto grid = make_grid(size, 2, true);
@@ -370,7 +386,7 @@ TEST_CASE("aod::Rtree tree validations", "[aod::Rtree]") {
   }
 }
 
-TEST_CASE("clear", "[aod::Rtree]") {
+TEST_CASE("clear", "[.ignore]") {
   const int size = 100;
   auto grid = make_grid(size, 2, true);
 

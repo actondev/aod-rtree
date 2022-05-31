@@ -8,7 +8,8 @@ nushoin_rtree_dep = nushoin_rtree_proj.get_variable('nushoin_rtree_dep')
 
 catch_test_src = files(
   'catch2.cpp', # CATCH_CONFIG_MAIN
-  'test_catch.cpp'
+  'test_catch.cpp',
+  'test_immer.cpp'
 )
 
 
@@ -67,4 +68,4 @@ test('catch',
 #      workdir: meson.project_source_root(),
 #     )
 
-subdir('benchmark')
+# subdir('benchmark')

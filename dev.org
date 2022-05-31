@@ -3,6 +3,10 @@
 #+begin_src sh
 rm -rf build
 meson setup build
+
+meson setup build-xcode --backend xcode -Dtest=true
+
+meson setup --help
 #+end_src
 * testing
   #+begin_src sh

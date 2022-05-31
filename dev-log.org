@@ -11,3 +11,7 @@
   added a test scanning whole rtree in 5x5 regions. seems fixed!
 ** <2022-04-16 Sat> refactoring adjust-tree
    after some more bugs, now seems nice & readable
+* <2022-05-31 Tue> trying immer
+  #+begin_src sh
+git clone https://github.com/arximboldi/immer.git subprojects/immer/
+  #+end_src
