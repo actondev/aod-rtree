@@ -249,6 +249,9 @@ void RtreeBase::init() {
 
   m_root_id = make_node_id();
 
+  m_state.low = transient(m_rects_low);
+  m_state.high = transient(m_rects_high);
+
   m_temp_rect = make_rect_id();
   m_partition.entries.resize(M + 1);
 
@@ -261,6 +264,8 @@ void RtreeBase::init() {
   m_partition.entries_areas.resize(M + 1);
 
   m_internal_rects_count = m_rects_count;
+
+  m_state.reset();
 }
 
 RtreeBase::Nid RtreeBase::choose_leaf(Rid r, Traversal &traversal) {
@@ -809,6 +814,9 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
 
+  m_state.low = transient(m_rects_low);
+  m_state.high = transient(m_rects_high);
+
   RectRo r{low,high};
   int removed = 0;
   Traversals remove_traverals;
@@ -827,6 +835,10 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
               return a.size() > b.size();
             });
   condense_tree(remove_traverals);
+  assign(m_rects_low, persistent(m_state.low.value()));
+  assign(m_rects_high, persistent(m_state.high.value()));
+
+  m_state.reset();
   m_size -= removed;
   return removed;
 }
@@ -1082,13 +1094,27 @@ RtreeBase::Options RtreeBase::default_options;
 
 #ifdef DEBUG
 bool RtreeBase::validate_mbrs() {
+
+  m_state.low = transient(m_rects_low);
+  m_state.high = transient(m_rects_high);
+
   Nid n = m_root_id;
   const Node &node = get_node(n);
   for (int i = 0; i < node.count; ++i) {
     if (!validate_mbrs(get_node_entry(n, i))) {
+
+      assign(m_rects_low, persistent(m_state.low.value()));
+      assign(m_rects_high, persistent(m_state.high.value()));
+
+      m_state.reset();
       return false;
     }
   }
+
+  assign(m_rects_low, persistent(m_state.low.value()));
+  assign(m_rects_high, persistent(m_state.high.value()));
+
+  m_state.reset();
   return true;
 }
 
