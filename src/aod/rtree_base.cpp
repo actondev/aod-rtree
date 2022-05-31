@@ -59,6 +59,20 @@ template <typename T> inline std::vector<T> &persistent(std::vector<T> &x) { ret
 template <typename T> inline auto transient(immer::vector<T> &x) { return x.transient();}
 template <typename T> inline immer::vector<T> persistent(immer::vector_transient<T> &x) { return x.persistent();}
 
+
+
+RtreeBase::Transaction::Transaction(RtreeBase* tree) : tree(tree) {
+  tree->m_state.low = transient(tree->m_rects_low);
+  tree->m_state.high = transient(tree->m_rects_high);
+}
+
+RtreeBase::Transaction::~Transaction() {
+  assign(tree->m_rects_low, persistent(tree->m_state.low.value()));
+  assign(tree->m_rects_high, persistent(tree->m_state.high.value()));
+
+  tree->m_state.reset();
+}
+
 // template <typename T> void container_set(std::vector<T> &vec, size_t idx, const T& value) {vec[idx] = value;}
 template <typename T> inline void container_set(immer::vector_transient<T> &vec, size_t idx, const T value) {vec.set(idx, value);}
 
@@ -352,8 +366,7 @@ void RtreeBase::update_entry_rect(Eid e) {
 }
 
 void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
-  m_state.low = transient(m_rects_low);
-  m_state.high = transient(m_rects_high);
+  Transaction transaction(this);
 
   ++m_size;
   // 1
@@ -378,9 +391,6 @@ void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
   // cout << "inserted, now comb rects call count " << combine_rects_count << endl;
   combine_rects_count = 0;
 
-  assign(m_rects_low, persistent(m_state.low.value()));
-  assign(m_rects_high, persistent(m_state.high.value()));
-  m_state.reset();
 }
 
 void RtreeBase::reinsert_entry(Eid e) {
@@ -782,11 +792,9 @@ RtreeBase::Rect RtreeBase::bounds() const {
 
 // TODO: could just store the offset & apply it in every public function's (insert, search, remove, bounds) input/output
 void RtreeBase::offset(const Vec &offset) {
+  Transaction transaction(this);
   ASSERT(offset.size() == m_dims);
   ASSERT(m_rects_low.size() == m_rects_high.size());
-
-  m_state.low = transient(m_rects_low);
-  m_state.high = transient(m_rects_high);
 
   for (int i = 0; i < m_rects_low.size(); i += m_dims) {
     for (int d = 0; d < m_dims; ++d) {
@@ -794,11 +802,6 @@ void RtreeBase::offset(const Vec &offset) {
       container_set(m_state.high.value(), i+d, m_state.high.value()[i+d] + offset[d]);
     }
   }
-
-  assign(m_rects_low, persistent(m_state.low.value()));
-  assign(m_rects_high, persistent(m_state.high.value()));
-
-  m_state.reset();
 }
 
 void RtreeBase::clear() { init(); }
@@ -811,11 +814,10 @@ int RtreeBase::remove(const Vec &low, const Vec &high) {
 }
 
 int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
+  Transaction transaction(this);
+  
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
-
-  m_state.low = transient(m_rects_low);
-  m_state.high = transient(m_rects_high);
 
   RectRo r{low,high};
   int removed = 0;
@@ -835,10 +837,7 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
               return a.size() > b.size();
             });
   condense_tree(remove_traverals);
-  assign(m_rects_low, persistent(m_state.low.value()));
-  assign(m_rects_high, persistent(m_state.high.value()));
 
-  m_state.reset();
   m_size -= removed;
   return removed;
 }
@@ -1094,6 +1093,7 @@ RtreeBase::Options RtreeBase::default_options;
 
 #ifdef DEBUG
 bool RtreeBase::validate_mbrs() {
+  Transaction transaction(this);
 
   m_state.low = transient(m_rects_low);
   m_state.high = transient(m_rects_high);
@@ -1102,19 +1102,10 @@ bool RtreeBase::validate_mbrs() {
   const Node &node = get_node(n);
   for (int i = 0; i < node.count; ++i) {
     if (!validate_mbrs(get_node_entry(n, i))) {
-
-      assign(m_rects_low, persistent(m_state.low.value()));
-      assign(m_rects_high, persistent(m_state.high.value()));
-
-      m_state.reset();
       return false;
     }
   }
 
-  assign(m_rects_low, persistent(m_state.low.value()));
-  assign(m_rects_high, persistent(m_state.high.value()));
-
-  m_state.reset();
   return true;
 }
 

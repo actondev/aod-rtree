@@ -149,6 +149,15 @@ class RtreeBase {
     // immer::vector_transient<ELEMTYPE> m_trans_high; 
   };
 
+  struct Transaction {
+    RtreeBase* tree;
+
+    Transaction() = delete;
+    Transaction(RtreeBase* tree);
+    ~Transaction();
+  };
+  friend Transaction::Transaction(RtreeBase* tree);
+
   State m_state;
 
   Rid make_rect_id();
