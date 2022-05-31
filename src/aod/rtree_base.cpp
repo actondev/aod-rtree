@@ -59,9 +59,7 @@ template <typename T> inline std::vector<T> &persistent(std::vector<T> &x) { ret
 template <typename T> inline auto transient(immer::vector<T> &x) { return x.transient();}
 template <typename T> inline immer::vector<T> persistent(immer::vector_transient<T> &x) { return x.persistent();}
 
-
-
-RtreeBase::Transaction::Transaction(RtreeBase* tree) : tree(tree) {
+RtreeBase::Transaction::Transaction(const RtreeBase* tree_) : tree(const_cast<RtreeBase*>(tree_)) {
   if(tree->m_is_in_transaction) return;
 
   is_active = true;
@@ -737,6 +735,7 @@ int RtreeBase::search(const Vec &low, const Vec &high,
 }
 
 int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) const {
+  Transaction transacion(this);
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
 
@@ -780,6 +779,7 @@ bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) co
 
 // TODO could be const but I'm using copy_rect & combine_rects
 RtreeBase::Rect RtreeBase::bounds() const {
+  Transaction transaction(this);
   Rect res;
   res.low.resize(m_dims, 0);
   res.high.resize(m_dims, 0);

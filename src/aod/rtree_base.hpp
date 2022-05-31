@@ -154,13 +154,13 @@ class RtreeBase {
     bool is_active{false};
 
     Transaction() = delete;
-    Transaction(RtreeBase* tree);
+    Transaction(const RtreeBase* tree);
     ~Transaction();
   };
 
   bool m_is_in_transaction{false};
 
-  friend Transaction::Transaction(RtreeBase* tree);
+  friend Transaction::Transaction(const RtreeBase* tree);
 
   State m_state;
 
@@ -186,11 +186,11 @@ class RtreeBase {
   inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
     // return m_rects_low[r.id * m_dims + dim];
     const auto idx = r.id * m_dims + dim;
-    return m_state.low ? m_state.low.value()[idx] : m_rects_low[idx];
+    return m_state.low.value()[idx];
   }
   inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
     const auto idx = r.id * m_dims + dim;
-    return m_state.high ? m_state.high.value()[idx] : m_rects_high[idx];
+    return m_state.high.value()[idx];
     // return m_rects_high[r.id * m_dims + dim];
   }
   inline ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const {
