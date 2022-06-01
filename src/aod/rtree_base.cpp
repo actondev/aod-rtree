@@ -78,6 +78,9 @@ RtreeBase::Transaction::Transaction(RtreeBase *tree) : tree(tree) {
   transients.low = transient(tree->m_rects_low);
   transients.high = transient(tree->m_rects_high);
   transients.entries = transient(tree->m_entries);
+#if !MUTABLE_NODE_ENTRIES
+  transients.node_entries = transient(tree->m_node_entries);
+#endif
 }
 
 RtreeBase::Transaction::~Transaction() {
@@ -87,13 +90,16 @@ RtreeBase::Transaction::~Transaction() {
   assign(tree->m_rects_low, persistent(tree->m_transients.value().low));
   assign(tree->m_rects_high, persistent(tree->m_transients.value().high));
   assign(tree->m_entries, persistent(tree->m_transients.value().entries));
+#if !MUTABLE_NODE_ENTRIES
+  assign(tree->m_node_entries, persistent(tree->m_transients.value().node_entries));
+#endif
 
   tree->m_is_in_transaction = false;
   tree->m_transients = std::nullopt;
 }
 
-// template <typename T> void container_set(std::vector<T> &vec, size_t idx,
-// const T& value) {vec[idx] = value;}
+template <typename T> void container_set(std::vector<T> &vec, size_t idx, const T& value) {vec[idx] = value;}
+
 template <typename T>
 inline void container_set(immer::vector_transient<T> &vec, size_t idx,
                           const T value) {
@@ -144,7 +150,15 @@ RtreeBase::Rid RtreeBase::make_rect_id() {
 RtreeBase::Nid RtreeBase::make_node_id() {
   Nid nid{m_nodes_count++};
   m_nodes.resize(m_nodes_count);
-  m_node_entries.resize(m_nodes_count * M);
+  size_t sz_node_entries = m_nodes_count * M;
+  resize(
+#if MUTABLE_NODE_ENTRIES
+      m_node_entries,
+      #else
+      m_transients.value().node_entries,
+      #endif
+      sz_node_entries);
+
   return nid;
 }
 RtreeBase::Eid RtreeBase::make_entry_id() {
@@ -196,10 +210,23 @@ inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
 }
 
 inline RtreeBase::Eid RtreeBase::get_node_entry(Nid n, int idx) const {
-  return m_node_entries[n.id * M + idx];
+  const size_t loc = n.id * M + idx;
+  #if MUTABLE_NODE_ENTRIES
+  return m_node_entries[loc];
+  #else
+  return m_is_in_transaction ? m_transients.value().node_entries[loc] : m_node_entries[loc];
+  #endif
 }
 inline void RtreeBase::set_node_entry(Nid n, int idx, Eid e) {
-  m_node_entries[n.id * M + idx] = e;
+  const size_t loc = n.id * M + idx;
+
+  container_set(
+#if MUTABLE_NODE_ENTRIES
+      m_node_entries,
+#else
+      m_transients.value().node_entries,
+#endif
+      loc, e);
 }
 
 inline RtreeBase::ELEMTYPE RtreeBase::rect_volume(Rid r) const {
@@ -282,6 +309,9 @@ RtreeBase::RtreeBase(int dimensions, const Options &options)
 }
 
 void RtreeBase::init() {
+  // needed for initializations (writing into transients)
+  Transaction transaction(this);
+
   m_rects_count = 0;
   m_nodes_count = 0;
   m_internal_rects_count = 0;
@@ -292,13 +322,9 @@ void RtreeBase::init() {
   // m_rects_low.resize(0);
   // m_rects_high.resize(0);
   m_nodes.resize(0);
-  m_node_entries.resize(0);
   // m_entries.resize(0);
 
   m_root_id = make_node_id();
-
-  // needed for some initializations (reading transients)
-  Transaction transaction(this);
 
   m_temp_rect = make_rect_id();
   m_partition.entries.resize(M + 1);

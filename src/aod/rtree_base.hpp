@@ -13,6 +13,7 @@
 #define ASSERT assert
 
 #define MUTABLE 0
+#define MUTABLE_NODE_ENTRIES 0
 
 namespace aod {
 
@@ -134,7 +135,11 @@ class RtreeBase {
   mutable Traversal m_traversal;
 
   std::vector<Node> m_nodes;
+  #if MUTABLE_NODE_ENTRIES
   std::vector<Eid> m_node_entries;
+  #else
+  immer::vector<Eid> m_node_entries;
+  #endif
 
   immer::vector<ELEMTYPE> m_rects_low;
   immer::vector<ELEMTYPE> m_rects_high;
@@ -143,6 +148,9 @@ class RtreeBase {
     immer::vector_transient<ELEMTYPE> low;
     immer::vector_transient<ELEMTYPE> high;
     immer::vector_transient<Entry> entries;
+#if !MUTABLE_NODE_ENTRIES
+    immer::vector_transient<Eid> node_entries;
+#endif
   };
 
   struct Transaction {
