@@ -41,7 +41,8 @@ template <typename T> void assign(T &where, const T &what) {
 }
 
 template <typename T>
-void resize(immer::vector_transient<T> &trans, size_t new_size, T default_value = T{}) {
+void resize(immer::vector_transient<T> &trans, size_t new_size,
+            T default_value = T{}) {
   if (new_size < trans.size()) {
     trans.take(new_size);
   } else {
@@ -66,7 +67,9 @@ inline immer::vector<T> persistent(immer::vector_transient<T> &x) {
   return x.persistent();
 }
 
-RtreeBase::Transaction::Transaction(RtreeBase *tree) : tree(tree) {
+template <typename... ImmerTemplates>
+RtreeBase<ImmerTemplates...>::Transaction::Transaction(RtreeBase *tree)
+    : tree(tree) {
   if (tree->m_is_in_transaction)
     return;
 
@@ -83,7 +86,8 @@ RtreeBase::Transaction::Transaction(RtreeBase *tree) : tree(tree) {
 #endif
 }
 
-RtreeBase::Transaction::~Transaction() {
+template <typename... ImmerTemplates>
+RtreeBase<ImmerTemplates...>::Transaction::~Transaction() {
   if (!is_active)
     return;
 
@@ -91,14 +95,18 @@ RtreeBase::Transaction::~Transaction() {
   assign(tree->m_rects_high, persistent(tree->m_transients.value().high));
   assign(tree->m_entries, persistent(tree->m_transients.value().entries));
 #if !MUTABLE_NODE_ENTRIES
-  assign(tree->m_node_entries, persistent(tree->m_transients.value().node_entries));
+  assign(tree->m_node_entries,
+         persistent(tree->m_transients.value().node_entries));
 #endif
 
   tree->m_is_in_transaction = false;
   tree->m_transients = std::nullopt;
 }
 
-template <typename T> void container_set(std::vector<T> &vec, size_t idx, const T& value) {vec[idx] = value;}
+template <typename T>
+void container_set(std::vector<T> &vec, size_t idx, const T &value) {
+  vec[idx] = value;
+}
 
 template <typename T>
 inline void container_set(immer::vector_transient<T> &vec, size_t idx,
@@ -106,32 +114,46 @@ inline void container_set(immer::vector_transient<T> &vec, size_t idx,
   vec.set(idx, value);
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Eid &id) {
+template <typename... ImmerTemplates>
+std::ostream &operator<<(std::ostream &os,
+                         const typename RtreeBase<ImmerTemplates...>::Eid &id) {
   os << "Eid{" << id.id << "}";
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Nid &id) {
+template <typename... ImmerTemplates>
+std::ostream &operator<<(std::ostream &os,
+                         const typename RtreeBase<ImmerTemplates...>::Nid &id) {
   os << "Nid{" << id.id << "}";
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Rid &id) {
+template <typename... ImmerTemplates>
+std::ostream &operator<<(std::ostream &os,
+                         const typename RtreeBase<ImmerTemplates...>::Rid &id) {
   os << "Rid{" << id.id << "}";
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Did &id) {
+template <typename... ImmerTemplates>
+std::ostream &operator<<(std::ostream &os,
+                         const typename RtreeBase<ImmerTemplates...>::Did &id) {
   os << "Did{" << id.id << "}";
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::TraversalEntry &p) {
+template <typename... ImmerTemplates>
+std::ostream &
+operator<<(std::ostream &os,
+           const typename RtreeBase<ImmerTemplates...>::TraversalEntry &p) {
   os << "Parent{" << p.entry << "->" << p.node << "}";
   return os;
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Traversal &tr) {
+template <typename... ImmerTemplates>
+std::ostream &
+operator<<(std::ostream &os,
+           const typename RtreeBase<ImmerTemplates...>::Traversal &tr) {
   os << "Traversal{ " << endl;
   for (auto const &parent : tr) {
     os << parent << ", ";
@@ -140,28 +162,34 @@ std::ostream &operator<<(std::ostream &os, const RtreeBase::Traversal &tr) {
   return os;
 }
 
-RtreeBase::Rid RtreeBase::make_rect_id() {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Rid
+RtreeBase<ImmerTemplates...>::make_rect_id() {
   Rid res{m_rects_count++};
   resize(m_transients.value().low, m_rects_count * m_dims, 0.0);
   resize(m_transients.value().high, m_rects_count * m_dims, 0.0);
 
   return res;
 }
-RtreeBase::Nid RtreeBase::make_node_id() {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Nid
+RtreeBase<ImmerTemplates...>::make_node_id() {
   Nid nid{m_nodes_count++};
   m_nodes.resize(m_nodes_count);
   size_t sz_node_entries = m_nodes_count * M;
   resize(
 #if MUTABLE_NODE_ENTRIES
       m_node_entries,
-      #else
+#else
       m_transients.value().node_entries,
-      #endif
+#endif
       sz_node_entries);
 
   return nid;
 }
-RtreeBase::Eid RtreeBase::make_entry_id() {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Eid
+RtreeBase<ImmerTemplates...>::make_entry_id() {
   Eid e{m_entries_count++};
   resize(m_transients.value().entries, m_entries_count);
 
@@ -170,16 +198,18 @@ RtreeBase::Eid RtreeBase::make_entry_id() {
   return e;
 }
 
-void RtreeBase::set_entry_rect(Eid e, Rid r) {
-  #if MUTABLE
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::set_entry_rect(Eid e, Rid r) {
+#if MUTABLE
   m_entries[e.id].rect_id = r;
-  #else
+#else
   Entry entry = get_entry(e);
   entry.rect_id = r;
   container_set(m_transients.value().entries, e.id, entry);
-  #endif
+#endif
 }
-void RtreeBase::set_entry_data(Eid e, Did d) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::set_entry_data(Eid e, Did d) {
 #if MUTABLE
   m_entries[e.id].data_id = d;
 #else
@@ -189,8 +219,9 @@ void RtreeBase::set_entry_data(Eid e, Did d) {
 #endif
 }
 
-void RtreeBase::set_entry_child(Eid e, Nid n) {
-  #if MUTABLE
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::set_entry_child(Eid e, Nid n) {
+#if MUTABLE
   m_entries[e.id].child_id = n;
 #else
   Entry entry = get_entry(e);
@@ -199,25 +230,39 @@ void RtreeBase::set_entry_child(Eid e, Nid n) {
 #endif
 }
 
-RtreeBase::Did RtreeBase::make_data_id() {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Did
+RtreeBase<ImmerTemplates...>::make_data_id() {
   Did d{m_data_count++};
   return d;
 }
 
-inline RtreeBase::Node &RtreeBase::get_node(Nid n) { return m_nodes[n.id]; }
-inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::Node &
+RtreeBase<ImmerTemplates...>::get_node(Nid n) {
   return m_nodes[n.id];
 }
 
-inline RtreeBase::Eid RtreeBase::get_node_entry(Nid n, int idx) const {
-  const size_t loc = n.id * M + idx;
-  #if MUTABLE_NODE_ENTRIES
-  return m_node_entries[loc];
-  #else
-  return m_is_in_transaction ? m_transients.value().node_entries[loc] : m_node_entries[loc];
-  #endif
+template <typename... ImmerTemplates>
+inline const typename RtreeBase<ImmerTemplates...>::Node &
+RtreeBase<ImmerTemplates...>::get_node(Nid n) const {
+  return m_nodes[n.id];
 }
-inline void RtreeBase::set_node_entry(Nid n, int idx, Eid e) {
+
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::Eid
+RtreeBase<ImmerTemplates...>::get_node_entry(Nid n, int idx) const {
+  const size_t loc = n.id * M + idx;
+#if MUTABLE_NODE_ENTRIES
+  return m_node_entries[loc];
+#else
+  return m_is_in_transaction ? m_transients.value().node_entries[loc]
+                             : m_node_entries[loc];
+#endif
+}
+template <typename... ImmerTemplates>
+inline void RtreeBase<ImmerTemplates...>::set_node_entry(Nid n, int idx,
+                                                         Eid e) {
   const size_t loc = n.id * M + idx;
 
   container_set(
@@ -229,7 +274,9 @@ inline void RtreeBase::set_node_entry(Nid n, int idx, Eid e) {
       loc, e);
 }
 
-inline RtreeBase::ELEMTYPE RtreeBase::rect_volume(Rid r) const {
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::ELEMTYPE
+RtreeBase<ImmerTemplates...>::rect_volume(Rid r) const {
   ELEMTYPE volume = (ELEMTYPE)1;
 
   for (int i = 0; i < m_dims; ++i) {
@@ -240,7 +287,9 @@ inline RtreeBase::ELEMTYPE RtreeBase::rect_volume(Rid r) const {
 
   return volume;
 }
-inline bool RtreeBase::rect_contains(Rid bigger, Rid smaller) const {
+template <typename... ImmerTemplates>
+inline bool RtreeBase<ImmerTemplates...>::rect_contains(Rid bigger,
+                                                        Rid smaller) const {
   for (int index = 0; index < m_dims; ++index) {
     if (rect_low_ro(bigger, index) > rect_low_ro(smaller, index) ||
         rect_high_ro(bigger, index) < rect_high_ro(smaller, index)) {
@@ -250,7 +299,9 @@ inline bool RtreeBase::rect_contains(Rid bigger, Rid smaller) const {
   return true;
 }
 
-inline bool RtreeBase::rects_overlap(const RectRo &a, Rid b) const {
+template <typename... ImmerTemplates>
+inline bool RtreeBase<ImmerTemplates...>::rects_overlap(const RectRo &a,
+                                                        Rid b) const {
   for (int index = 0; index < m_dims; ++index) {
     if (rect_low_ro(a, index) > rect_high_ro(b, index) ||
         rect_low_ro(b, index) > rect_high_ro(a, index)) {
@@ -260,7 +311,8 @@ inline bool RtreeBase::rects_overlap(const RectRo &a, Rid b) const {
   return true;
 }
 
-inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
+template <typename... ImmerTemplates>
+inline bool RtreeBase<ImmerTemplates...>::rects_overlap(Rid a, Rid b) const {
   for (int index = 0; index < m_dims; ++index) {
     if (rect_low_ro(a, index) > rect_high_ro(b, index) ||
         rect_low_ro(b, index) > rect_high_ro(a, index)) {
@@ -270,20 +322,23 @@ inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
   return true;
 }
 
-inline void RtreeBase::copy_rect(Rid src, Rid dst) {
+template <typename... ImmerTemplates>
+inline void RtreeBase<ImmerTemplates...>::copy_rect(Rid src, Rid dst) {
   Transients &transients = m_transients.value();
   for (int i = 0; i < m_dims; ++i) {
     container_set(transients.low, rect_index(dst, i), rect_low_ro(src, i));
     container_set(transients.high, rect_index(dst, i), rect_high_ro(src, i));
   }
 }
-void RtreeBase::copy_rect(Rid src, Rect &dst) const {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::copy_rect(Rid src, Rect &dst) const {
   for (int i = 0; i < m_dims; ++i) {
     dst.low[i] = rect_low_ro(src, i);
     dst.high[i] = rect_high_ro(src, i);
   }
 }
-inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
+template <typename... ImmerTemplates>
+inline void RtreeBase<ImmerTemplates...>::combine_rects(Rid a, Rid b, Rid dst) {
   combine_rects_count++;
   Transients &transients = m_transients.value();
   for (int i = 0; i < m_dims; i++) {
@@ -293,22 +348,22 @@ inline void RtreeBase::combine_rects(Rid a, Rid b, Rid dst) {
                   Max(rect_high_ro(a, i), rect_high_ro(b, i)));
   }
 }
-
-void RtreeBase::absorb_rect(Rid src, Rect &dst) const {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::absorb_rect(Rid src, Rect &dst) const {
   for (int i = 0; i < m_dims; i++) {
     dst.low[i] = Min(dst.low[i], rect_low_ro(src, i));
     dst.high[i] = Max(dst.high[i], rect_high_ro(src, i));
   }
 }
-
-RtreeBase::RtreeBase(int dimensions, const Options &options)
+template <typename... ImmerTemplates>
+RtreeBase<ImmerTemplates...>::RtreeBase(int dimensions, const Options &options)
     : m{options.m}, M{options.M}, m_dims(dimensions) {
   ASSERT(m_dims > 0);
   ASSERT(m < M);
   init();
 }
-
-void RtreeBase::init() {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::init() {
   // needed for initializations (writing into transients)
   Transaction transaction(this);
 
@@ -339,16 +394,18 @@ void RtreeBase::init() {
 
   m_internal_rects_count = m_rects_count;
 }
-
-RtreeBase::Nid RtreeBase::choose_leaf(Rid r, Traversal &traversal) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Nid
+RtreeBase<ImmerTemplates...>::choose_leaf(Rid r, Traversal &traversal) {
   TraversalEntry p;
   p.node = m_root_id;
   traversal.push_back(p);
   return choose_node(m_root_id, r, 0, traversal);
 }
-
-RtreeBase::Nid RtreeBase::choose_node(Nid n, Rid r, int height,
-                                      Traversal &traversal) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Nid
+RtreeBase<ImmerTemplates...>::choose_node(Nid n, Rid r, int height,
+                                          Traversal &traversal) {
   ASSERT(n);
   ASSERT(r);
   Node &node = get_node(n);
@@ -366,7 +423,9 @@ RtreeBase::Nid RtreeBase::choose_node(Nid n, Rid r, int height,
   return choose_node(child, r, height, traversal);
 }
 
-RtreeBase::Eid RtreeBase::choose_subtree(Nid n, Rid r) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Eid
+RtreeBase<ImmerTemplates...>::choose_subtree(Nid n, Rid r) {
   // CL3. If N is not a leaf, let F be the entry in N whose rectangle
   // FI needs least enlargment to include EI. Resolved ties by
   // choosing the entry with the rectangle of smallest area.
@@ -404,7 +463,8 @@ RtreeBase::Eid RtreeBase::choose_subtree(Nid n, Rid r) {
   return best;
 }
 
-void RtreeBase::update_entry_rect(Eid e) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::update_entry_rect(Eid e) {
   const Entry &the_entry = get_entry(e);
   Rid r = the_entry.rect_id;
   Nid n = the_entry.child_id;
@@ -423,7 +483,9 @@ void RtreeBase::update_entry_rect(Eid e) {
   }
 }
 
-void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::insert(const Vec &low, const Vec &high,
+                                          Did did) {
   Transaction transaction(this);
 
   ++m_size;
@@ -447,12 +509,12 @@ void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
 
   adjust_tree(m_traversal, e, nn);
 
-  // cout << "inserted, now comb rects call count " << combine_rects_count << endl;
+  // cout << "inserted, now comb rects call count " << combine_rects_count <<
+  // endl;
   combine_rects_count = 0;
-
 }
-
-void RtreeBase::reinsert_entry(Eid e) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::reinsert_entry(Eid e) {
   const Entry &entry = get_entry(e);
   if (entry.child_id) {
     const Node &entry_node = get_node(entry.child_id);
@@ -479,8 +541,9 @@ void RtreeBase::reinsert_entry(Eid e) {
 
   adjust_tree(m_traversal, e, nn);
 }
-
-RtreeBase::Nid RtreeBase::insert(Nid n, Eid e) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Nid
+RtreeBase<ImmerTemplates...>::insert(Nid n, Eid e) {
   Nid nn; // new node (falsy)
   Node &node = get_node(n);
   if (node.count < M) {
@@ -493,15 +556,16 @@ RtreeBase::Nid RtreeBase::insert(Nid n, Eid e) {
   // the tree!
   return nn;
 }
-
-void RtreeBase::plain_insert(Nid n, Eid e) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::plain_insert(Nid n, Eid e) {
   Node &node = get_node(n);
   ASSERT(node.count < M);
   set_node_entry(n, node.count, e);
   ++node.count;
 }
-
-RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Nid
+RtreeBase<ImmerTemplates...>::split_and_insert(Nid n, Eid e) {
   Nid nn = make_node_id();
   Node &node = get_node(n);
   Node &new_node = get_node(nn);
@@ -532,9 +596,10 @@ RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
 
   return nn;
 }
-
-void RtreeBase::distribute_entries(Nid n, Nid nn, std::vector<Eid> entries,
-                                   const Seeds &seeds) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::distribute_entries(Nid n, Nid nn,
+                                                      std::vector<Eid> entries,
+                                                      const Seeds &seeds) {
   const Node &node = get_node(n);
   const Node &new_node = get_node(nn);
 
@@ -616,9 +681,9 @@ void RtreeBase::distribute_entries(Nid n, Nid nn, std::vector<Eid> entries,
     }
   }
 }
-
-void RtreeBase::distribute_entries_naive(Nid n, Nid nn,
-                                         std::vector<Eid> entries) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::distribute_entries_naive(
+    Nid n, Nid nn, std::vector<Eid> entries) {
   uint half = entries.size() / 2 + 1;
   for (uint i = 0; i < half; ++i) {
     plain_insert(n, entries[i]);
@@ -627,8 +692,8 @@ void RtreeBase::distribute_entries_naive(Nid n, Nid nn,
     plain_insert(nn, entries[i]);
   }
 }
-
-void RtreeBase::adjust_rects(const Traversal &traversal) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::adjust_rects(const Traversal &traversal) {
   // important! no uint here (decreasing, want to reach 0)
   for (int i = static_cast<int>(traversal.size()) - 1; i >= 0; --i) {
     const TraversalEntry &parent = traversal[i];
@@ -644,7 +709,9 @@ void RtreeBase::adjust_rects(const Traversal &traversal) {
 /// newly inserted Entry e is not necessarily places into that leaf
 /// node if a split took place (a split took place if nn isn't
 /// nullish).
-void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::adjust_tree(const Traversal &traversal,
+                                               Eid e, Nid nn) {
   Nid n;
   for (int level = traversal.size() - 1; level >= 0; --level) {
     const TraversalEntry &traversal_entry = traversal[level];
@@ -722,7 +789,9 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
 /// Pick first entry for each group. We get 2 groups after splitting a
 /// node. Returns the entries indexes of those seed entries.  Code
 /// from Superliminal rtree
-RtreeBase::Seeds RtreeBase::pick_seeds(const std::vector<Eid> &entries) {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Seeds
+RtreeBase<ImmerTemplates...>::pick_seeds(const std::vector<Eid> &entries) {
   Seeds res;
   ASSERT(entries.size() == static_cast<uint>(M + 1));
 
@@ -760,17 +829,22 @@ RtreeBase::Seeds RtreeBase::pick_seeds(const std::vector<Eid> &entries) {
   return res;
 }
 
-size_t RtreeBase::size() { return m_size; }
+template <typename... ImmerTemplates>
+size_t RtreeBase<ImmerTemplates...>::size() {
+  return m_size;
+}
 
-std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) const {
+template <typename... ImmerTemplates>
+std::vector<typename RtreeBase<ImmerTemplates...>::Eid>
+RtreeBase<ImmerTemplates...>::search(const Vec &low, const Vec &high) const {
   std::vector<Eid> res;
 
   search(low, high, res);
   return res;
 }
-
-int RtreeBase::search(const Vec &low, const Vec &high,
-                      std::vector<Eid> &results) const {
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::search(const Vec &low, const Vec &high,
+                                         std::vector<Eid> &results) const {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
 
@@ -785,7 +859,9 @@ int RtreeBase::search(const Vec &low, const Vec &high,
   return found_count;
 }
 
-int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) const {
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::search(const Vec &low, const Vec &high,
+                                         SearchCb cb) const {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));
 
@@ -795,7 +871,9 @@ int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) const {
   return found_count;
 }
 
-bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) const {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::search(Nid n, const RectRo &r,
+                                          int &found_count, SearchCb cb) const {
   const Node &node = get_node(n);
   if (node.is_internal()) {
     for (int i = 0; i < node.count; ++i) {
@@ -828,7 +906,9 @@ bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) co
 }
 
 // TODO could be const but I'm using copy_rect & combine_rects
-RtreeBase::Rect RtreeBase::bounds() const {
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Rect
+RtreeBase<ImmerTemplates...>::bounds() const {
   Rect res;
   res.low.resize(m_dims, 0);
   res.high.resize(m_dims, 0);
@@ -848,7 +928,8 @@ RtreeBase::Rect RtreeBase::bounds() const {
 
 // TODO: could just store the offset & apply it in every public
 // function's (insert, search, remove, bounds) input/output
-void RtreeBase::offset(const Vec &offset) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::offset(const Vec &offset) {
   Transaction transaction(this);
   ASSERT(offset.size() == m_dims);
   ASSERT(m_rects_low.size() == m_rects_high.size());
@@ -863,16 +944,25 @@ void RtreeBase::offset(const Vec &offset) {
   }
 }
 
-void RtreeBase::clear() { init(); }
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::clear() {
+  init();
+}
 
-int RtreeBase::dimensions() const { return m_dims; }
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::dimensions() const {
+  return m_dims;
+}
 
-int RtreeBase::remove(const Vec &low, const Vec &high) {
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::remove(const Vec &low, const Vec &high) {
   Predicate pred = [](Eid) { return true; };
   return remove(low, high, pred);
 }
 
-int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::remove(const Vec &low, const Vec &high,
+                                         Predicate pred) {
   Transaction transaction(this);
 
   ASSERT(low.size() == static_cast<uint>(m_dims));
@@ -900,9 +990,11 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
   return removed;
 }
 
-void RtreeBase::remove(Nid n, const RectRo &r, int &counter,
-                       Traversals &traversals, const Traversal &cur_traversal,
-                       Predicate cb) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::remove(Nid n, const RectRo &r, int &counter,
+                                          Traversals &traversals,
+                                          const Traversal &cur_traversal,
+                                          Predicate cb) {
   Node &node = get_node(n);
   if (node.is_internal()) {
     for (int i = 0; i < node.count; ++i) {
@@ -938,7 +1030,8 @@ void RtreeBase::remove(Nid n, const RectRo &r, int &counter,
   }
 }
 
-bool RtreeBase::remove_node_entry(Nid n, Eid e) {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::remove_node_entry(Nid n, Eid e) {
   Node &node = get_node(n);
   int idx = -1;
   for (int i = 0; i < node.count; ++i) {
@@ -955,14 +1048,16 @@ bool RtreeBase::remove_node_entry(Nid n, Eid e) {
   return true;
 }
 
-void RtreeBase::remove_node_entry(Nid n, int idx) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::remove_node_entry(Nid n, int idx) {
   Node &node = get_node(n);
   ASSERT(idx < node.count);
   set_node_entry(n, idx, get_node_entry(n, node.count - 1));
   --node.count;
 }
 
-void RtreeBase::condense_tree(const Traversals &traversals) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::condense_tree(const Traversals &traversals) {
   std::set<Eid> entries_to_reinsert;
   for (const Traversal &traversal : traversals) {
     for (int i = traversal.size() - 1; i >= 1; --i) {
@@ -993,7 +1088,7 @@ void RtreeBase::condense_tree(const Traversals &traversals) {
     root.height = 0;
   }
   // skipping reinserting entries that point to empty node
-  std::set<Eid>::iterator it = entries_to_reinsert.begin();
+  typename std::set<Eid>::iterator it = entries_to_reinsert.begin();
   while (it != entries_to_reinsert.end()) {
     auto current = it++;
     const Entry &entry = get_entry(*current);
@@ -1008,36 +1103,51 @@ void RtreeBase::condense_tree(const Traversals &traversals) {
   }
 }
 
-inline size_t RtreeBase::rect_index(Rid r, const int dim) const {
+template <typename... ImmerTemplates>
+inline size_t RtreeBase<ImmerTemplates...>::rect_index(Rid r,
+                                                       const int dim) const {
   return r.id * m_dims + dim;
 }
 
-inline RtreeBase::ELEMTYPE RtreeBase::rect_low_ro(const Rid r, const int dim) const {
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::ELEMTYPE
+RtreeBase<ImmerTemplates...>::rect_low_ro(const Rid r, const int dim) const {
   const auto idx = r.id * m_dims + dim;
   return m_transients ? m_transients.value().low[idx] : m_rects_low[idx];
 }
 
-inline RtreeBase::ELEMTYPE RtreeBase::rect_high_ro(const Rid r, const int dim) const {
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::ELEMTYPE
+RtreeBase<ImmerTemplates...>::rect_high_ro(const Rid r, const int dim) const {
   const auto idx = r.id * m_dims + dim;
   return m_transients ? m_transients.value().high[idx] : m_rects_high[idx];
 }
 
-inline RtreeBase::ELEMTYPE RtreeBase::rect_low_ro(const RectRo &r, const int dim) const {
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::ELEMTYPE
+RtreeBase<ImmerTemplates...>::rect_low_ro(const RectRo &r,
+                                          const int dim) const {
   return r.low[dim];
 }
-inline RtreeBase::ELEMTYPE RtreeBase::rect_high_ro(const RectRo &r, const int dim) const {
+
+template <typename... ImmerTemplates>
+inline typename RtreeBase<ImmerTemplates...>::ELEMTYPE
+RtreeBase<ImmerTemplates...>::rect_high_ro(const RectRo &r,
+                                           const int dim) const {
   return r.high[dim];
 }
 
 // debug/print related functions from now on (probably)
 
-int RtreeBase::count(Nid n) {
+template <typename... ImmerTemplates>
+int RtreeBase<ImmerTemplates...>::count(Nid n) {
   int counter = 0;
   count(n, counter);
   return counter;
 }
 
-void RtreeBase::count(Nid n, int &counter) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::count(Nid n, int &counter) {
   const Node &node = get_node(n);
   if (node.is_internal()) {
     for (int i = 0; i < node.count; ++i) {
@@ -1051,8 +1161,9 @@ void RtreeBase::count(Nid n, int &counter) {
   }
 }
 
-void RtreeBase::entry_to_string(Eid e, int level, int spaces,
-                                std::ostream &os) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::entry_to_string(Eid e, int level, int spaces,
+                                                   std::ostream &os) {
   if (!e)
     return;
   auto indent = [&]() {
@@ -1085,13 +1196,17 @@ void RtreeBase::entry_to_string(Eid e, int level, int spaces,
   }
 }
 
-std::string RtreeBase::entry_to_string(Eid e, int level, int spaces) {
+template <typename... ImmerTemplates>
+std::string RtreeBase<ImmerTemplates...>::entry_to_string(Eid e, int level,
+                                                          int spaces) {
   std::ostringstream os;
   entry_to_string(e, level, spaces, os);
   return os.str();
 };
 
-void RtreeBase::node_to_string(Nid n, int level, int spaces, std::ostream &os) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::node_to_string(Nid n, int level, int spaces,
+                                                  std::ostream &os) {
   if (!n)
     return;
   Node node = get_node(n);
@@ -1111,23 +1226,28 @@ void RtreeBase::node_to_string(Nid n, int level, int spaces, std::ostream &os) {
   os << "</Node>" << endl;
 };
 
-std::string RtreeBase::node_to_string(Nid nid, int level, int spaces) {
+template <typename... ImmerTemplates>
+std::string RtreeBase<ImmerTemplates...>::node_to_string(Nid nid, int level,
+                                                         int spaces) {
   std::ostringstream os;
   node_to_string(nid, level, spaces, os);
   return os.str();
 };
 
-std::string RtreeBase::to_string() {
+template <typename... ImmerTemplates>
+std::string RtreeBase<ImmerTemplates...>::to_string() {
   std::ostringstream os;
   to_string(4, os);
   return os.str();
 }
 
-void RtreeBase::to_string(int spaces, std::ostream &os) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::to_string(int spaces, std::ostream &os) {
   node_to_string(m_root_id, 0, spaces, os);
 }
 
-void RtreeBase::rect_to_string(Rid rid, std::ostream &os) {
+template <typename... ImmerTemplates>
+void RtreeBase<ImmerTemplates...>::rect_to_string(Rid rid, std::ostream &os) {
   ASSERT(rid);
   for (int i = 0; i < m_dims; i++) {
     if (i == 0) {
@@ -1156,25 +1276,36 @@ void RtreeBase::rect_to_string(Rid rid, std::ostream &os) {
   }
 }
 
-std::string RtreeBase::rect_to_string(Rid rid) {
+template <typename... ImmerTemplates>
+std::string RtreeBase<ImmerTemplates...>::rect_to_string(Rid rid) {
   std::ostringstream os;
   rect_to_string(rid, os);
   return os.str();
 }
 
-std::ostream &operator<<(std::ostream &os, const RtreeBase::Xml &xml) {
+template <typename... ImmerTemplates>
+std::ostream &
+operator<<(std::ostream &os,
+           const typename RtreeBase<ImmerTemplates...>::Xml &xml) {
   os << "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\" ?>"
      << std::endl;
   xml.tree->to_string(xml.spaces, os);
   return os;
 }
 
-RtreeBase::Xml RtreeBase::to_xml() { return Xml(this); }
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Xml
+RtreeBase<ImmerTemplates...>::to_xml() {
+  return Xml(this);
+}
 
-RtreeBase::Options RtreeBase::default_options;
+template <typename... ImmerTemplates>
+typename RtreeBase<ImmerTemplates...>::Options
+    RtreeBase<ImmerTemplates...>::default_options;
 
 #ifdef DEBUG
-bool RtreeBase::validate_mbrs() {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::validate_mbrs() {
   Transaction transaction(this);
 
   Nid n = m_root_id;
@@ -1188,7 +1319,8 @@ bool RtreeBase::validate_mbrs() {
   return true;
 }
 
-bool RtreeBase::validate_mbrs(Eid e) {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::validate_mbrs(Eid e) {
   const Entry &entry = get_entry(e);
   Nid n = entry.child_id;
   Rid r = entry.rect_id;
@@ -1222,7 +1354,8 @@ bool RtreeBase::validate_mbrs(Eid e) {
   return true;
 }
 
-bool RtreeBase::has_duplicate_nodes() {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::has_duplicate_nodes() {
   std::set<id_t> nodes;
 
   std::function<bool(Nid)> traverse = [&](Nid n) {
@@ -1249,7 +1382,8 @@ bool RtreeBase::has_duplicate_nodes() {
   return traverse(m_root_id);
 }
 
-bool RtreeBase::has_duplicate_entries() {
+template <typename... ImmerTemplates>
+bool RtreeBase<ImmerTemplates...>::has_duplicate_entries() {
   std::set<id_t> entries;
 
   std::function<bool(Nid)> traverse = [&](Nid n) {

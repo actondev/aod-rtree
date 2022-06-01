@@ -17,6 +17,7 @@
 
 namespace aod {
 
+template <typename ...ImmerTemplates>
 class RtreeBase {
  public:
   using ELEMTYPE = double;
@@ -59,7 +60,7 @@ class RtreeBase {
   struct Eid : Id {};
   /// Data id
   struct Did : Id {};
-  
+
   struct Entry {
   Rid rect_id;
     Nid child_id;
@@ -141,15 +142,15 @@ class RtreeBase {
   immer::vector<Eid> m_node_entries;
   #endif
 
-  immer::vector<ELEMTYPE> m_rects_low;
-  immer::vector<ELEMTYPE> m_rects_high;
+  immer::vector<ELEMTYPE, ImmerTemplates...> m_rects_low;
+  immer::vector<ELEMTYPE, ImmerTemplates...> m_rects_high;
   immer::vector<Entry> m_entries;
   struct Transients {
-    immer::vector_transient<ELEMTYPE> low;
-    immer::vector_transient<ELEMTYPE> high;
-    immer::vector_transient<Entry> entries;
+    immer::vector_transient<ELEMTYPE, ImmerTemplates...> low;
+    immer::vector_transient<ELEMTYPE, ImmerTemplates...> high;
+    immer::vector_transient<Entry, ImmerTemplates...> entries;
 #if !MUTABLE_NODE_ENTRIES
-    immer::vector_transient<Eid> node_entries;
+    immer::vector_transient<Eid, ImmerTemplates...> node_entries;
 #endif
   };
 
@@ -188,7 +189,7 @@ class RtreeBase {
   }
 
   ELEMTYPE rect_volume(Rid) const;
-  
+
   // NB: these are defined as inline in the cpp, so they cannot be
   // used from the outside. Not sure how to deal with this
   // ELEMTYPE &rect_low_rw(const Rid r, const int dim);
@@ -274,7 +275,7 @@ public:
   Xml to_xml();
   size_t size();
   RtreeBase() = delete;
-  RtreeBase(int dimensions, const Options& options = default_options);
+  RtreeBase(int dimensions, const Options& options = {});
   void to_string(int spaces, std::ostream &);
   int remove(const Vec &low, const Vec &high);
   int remove(const Vec &low, const Vec &high, Predicate);
