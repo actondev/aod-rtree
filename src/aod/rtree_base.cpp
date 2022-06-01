@@ -149,10 +149,24 @@ RtreeBase::Eid RtreeBase::make_entry_id() {
   Eid e{m_entries_count++};
   m_entries.resize(m_entries_count);
 
-  Entry &entry = get_entry(e);
-  entry.rect_id = make_rect_id();
+  Rid r = make_rect_id();
+  set_entry_rect(e, r);
   return e;
 }
+
+void RtreeBase::set_entry_rect(Eid e, Rid r) {
+  Entry &entry = get_entry(e);
+  entry.rect_id = make_rect_id();
+}
+void RtreeBase::set_entry_data(Eid e, Did d) {
+  Entry &entry = get_entry(e);
+  entry.data_id = d;
+}
+void RtreeBase::set_entry_child(Eid e, Nid n) {
+  Entry &entry = get_entry(e);
+  entry.child_id = n;
+}
+
 RtreeBase::Did RtreeBase::make_data_id() {
   Did d{m_data_count++};
   return d;
@@ -371,9 +385,9 @@ void RtreeBase::insert(const Vec &low, const Vec &high, Did did) {
   ++m_size;
   // 1
   const Eid e = make_entry_id(); // also sets the rect
-  Entry &entry = get_entry(e);
-  entry.data_id = did;
+  set_entry_data(e, did);
 
+  const Entry &entry = get_entry(e);
   const Rid r = entry.rect_id;
 
   Transients &transients = m_transients.value();
@@ -620,8 +634,7 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
 #endif
 
       const Eid ne = make_entry_id();
-      Entry &new_entry = get_entry(ne);
-      new_entry.child_id = nn;
+      set_entry_child(ne, nn);
       update_entry_rect(ne);
 
       nn = insert(parent.node, ne);
@@ -648,12 +661,10 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
     const Eid old_root_e = make_entry_id();
     const Eid new_node_e = make_entry_id();
 
-    Entry &old_root_entry = get_entry(old_root_e);
-    old_root_entry.child_id = m_root_id;
+    set_entry_child(old_root_e, m_root_id);
     update_entry_rect(old_root_e);
 
-    Entry &new_node_entry = get_entry(new_node_e);
-    new_node_entry.child_id = nn;
+    set_entry_child(new_node_e, nn);
     update_entry_rect(new_node_e);
 
     plain_insert(new_root_id, old_root_e);
@@ -1005,7 +1016,7 @@ void RtreeBase::entry_to_string(Eid e, int level, int spaces,
       os << " ";
     }
   };
-  Entry entry = get_entry(e);
+  const Entry &entry = get_entry(e);
   Rid r = entry.rect_id;
   indent();
   os << " <Entry id=\"" << e.id << "\"";
@@ -1171,7 +1182,7 @@ bool RtreeBase::has_duplicate_nodes() {
   std::set<id_t> nodes;
 
   std::function<bool(Nid)> traverse = [&](Nid n) {
-    Node &node = get_node(n);
+    const Node &node = get_node(n);
     if (nodes.count(n.id) > 0) {
       cout << "Node " << n << " already in the container" << endl;
       return true;
@@ -1183,7 +1194,7 @@ bool RtreeBase::has_duplicate_nodes() {
     }
     for (int i = 0; i < node.count; ++i) {
       Eid e = get_node_entry(n, i);
-      Entry &entry = get_entry(e);
+      const Entry &entry = get_entry(e);
       if (traverse(entry.child_id)) {
         return true;
       }
@@ -1209,7 +1220,7 @@ bool RtreeBase::has_duplicate_entries() {
       }
       entries.insert(e.id);
 
-      Entry &entry = get_entry(e);
+      const Entry &entry = get_entry(e);
       if (node.is_internal() && traverse(entry.child_id)) {
         return true;
       }
