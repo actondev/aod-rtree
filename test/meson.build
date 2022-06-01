@@ -68,4 +68,4 @@ test('catch',
 #      workdir: meson.project_source_root(),
 #     )
 
-# subdir('benchmark')
+subdir('benchmark')

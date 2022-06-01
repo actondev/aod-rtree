@@ -2,11 +2,14 @@
 
 #+begin_src sh
 rm -rf build
-meson setup build
+meson setup build -Dtest=true
 
 meson setup build-xcode --backend xcode -Dtest=true
 
-meson setup --help
+meson configure build -Doptimization=2
+meson configure build -Doptimization=0
+
+ln -Fs ./build/compile_commands.json ./compile_commands.json
 #+end_src
 * testing
   #+begin_src sh
@@ -36,21 +39,21 @@ echo "Running benchmarks for -O${opt}"
 csv="benchmark-init-O${opt}.csv"
 png="benchmark-init-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=init --benchmark_format=csv | tee "$csv"
-python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "init: inserting points from a NxN grid" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "init: inserting points from a NxN grid" --xlabel "N" --ylabel "time (ms)"
    #+end_src
 
    #+begin_src sh
 csv="benchmark-search-O${opt}.csv"
 png="benchmark-search-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=search --benchmark_format=csv | tee "$csv"
-python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "search (5x5 area)" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "search (5x5 area)" --xlabel "N" --ylabel "time (ms)"
    #+end_src
 
    #+begin_src sh
 csv="benchmark-copy-O${opt}.csv"
 png="benchmark-copy-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=copy --benchmark_format=csv | tee "$csv"
-python ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "copy" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "copy" --xlabel "N" --ylabel "time (ms)"
    #+end_src
 
    

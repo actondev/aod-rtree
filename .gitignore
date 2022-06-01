@@ -7,3 +7,4 @@ callgrind.out*
 massif.out*
 *.xml
 *.csv
+.ccls-cache/

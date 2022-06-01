@@ -4,7 +4,7 @@
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
 #include <functional>
-#include <mdds/rtree.hpp>
+// #include <mdds/rtree.hpp>
 
 template <int DIMS>
 RTree<Point, double, DIMS> grid_to_superliminial_rtree(const Grid &grid) {
@@ -16,29 +16,29 @@ RTree<Point, double, DIMS> grid_to_superliminial_rtree(const Grid &grid) {
   return tree;
 }
 
-using rt_type = mdds::rtree<double, std::string>;
+// using rt_type = mdds::rtree<double, std::string>;
 
-// default mdds options make it really slow.
-// following superliminal defaults for min & max node size
-struct mdds_options {
-  constexpr static size_t dimensions = 2;
-  // the commented value is the default one
-  constexpr static size_t min_node_size = 4;               // 40
-  constexpr static size_t max_node_size = 8;               // 100
-  constexpr static size_t max_tree_depth = 100;            //
-  constexpr static bool enable_forced_reinsertion = false; // true
-  constexpr static size_t reinsertion_size = 2;            // 30
-};
-mdds::rtree<double, Point, mdds_options> grid_to_mdds_rtree(const Grid &grid) {
+// // default mdds options make it really slow.
+// // following superliminal defaults for min & max node size
+// struct mdds_options {
+//   constexpr static size_t dimensions = 2;
+//   // the commented value is the default one
+//   constexpr static size_t min_node_size = 4;               // 40
+//   constexpr static size_t max_node_size = 8;               // 100
+//   constexpr static size_t max_tree_depth = 100;            //
+//   constexpr static bool enable_forced_reinsertion = false; // true
+//   constexpr static size_t reinsertion_size = 2;            // 30
+// };
+// mdds::rtree<double, Point, mdds_options> grid_to_mdds_rtree(const Grid &grid) {
 
-  mdds::rtree<double, Point, mdds_options> tree;
-  for (const Point &el : grid.points) {
-    const double *pos = &el[0];
-    // rt_type::extent_type bounds({-2.0, -1.0}, {1.0, 2.0});
-    tree.insert({{pos[0], pos[1]}, {pos[0], pos[1]}}, el);
-  }
-  return tree;
-}
+//   mdds::rtree<double, Point, mdds_options> tree;
+//   for (const Point &el : grid.points) {
+//     const double *pos = &el[0];
+//     // rt_type::extent_type bounds({-2.0, -1.0}, {1.0, 2.0});
+//     tree.insert({{pos[0], pos[1]}, {pos[0], pos[1]}}, el);
+//   }
+//   return tree;
+// }
 
 namespace bg = boost::geometry;
 namespace bgi = boost::geometry::index;
@@ -61,6 +61,15 @@ static void aod_rtree_init(benchmark::State &state) {
   auto grid = make_grid(size, 2);
   for (auto _ : state) {
     aod::Rtree<Point> tree = grid_to_aod_rtree(grid);
+    benchmark::DoNotOptimize(tree);
+  }
+}
+
+static void aod_rtree_init_with_transaction(benchmark::State &state) {
+  int size = state.range(0);
+  auto grid = make_grid(size, 2);
+  for (auto _ : state) {
+    aod::Rtree<Point> tree = grid_to_aod_rtree_with_transaction(grid);
     benchmark::DoNotOptimize(tree);
   }
 }
@@ -128,42 +137,42 @@ static void superliminal_rtree_search(benchmark::State &state) {
   }
 }
 
-static void mdds_rtree_init(benchmark::State &state) {
-  int size = state.range(0);
-  auto grid = make_grid(size, 2);
-  for (auto _ : state) {
-    mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
-    benchmark::DoNotOptimize(tree);
-  }
-}
+// static void mdds_rtree_init(benchmark::State &state) {
+//   int size = state.range(0);
+//   auto grid = make_grid(size, 2);
+//   for (auto _ : state) {
+//     mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
+//     benchmark::DoNotOptimize(tree);
+//   }
+// }
 
-static void mdds_rtree_copy(benchmark::State &state) {
-  int size = state.range(0);
-  auto grid = make_grid(size, 2);
-  mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
-  for (auto _ : state) {
-    mdds::rtree<double, Point, mdds_options> tree2 = tree;
-    benchmark::DoNotOptimize(tree2);
-  }
-}
+// static void mdds_rtree_copy(benchmark::State &state) {
+//   int size = state.range(0);
+//   auto grid = make_grid(size, 2);
+//   mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
+//   for (auto _ : state) {
+//     mdds::rtree<double, Point, mdds_options> tree2 = tree;
+//     benchmark::DoNotOptimize(tree2);
+//   }
+// }
 
-static void mdds_rtree_search(benchmark::State &state) {
-  int size = state.range(0);
-  auto grid = make_grid(size, 2);
-  mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
-  for (auto _ : state) {
-    auto results =
-        tree.search({{5.0, 5.0}, {9.0, 9.0}}, rt_type::search_type::overlap);
-    benchmark::DoNotOptimize(results);
-    // state.PauseTiming();
-    // int count = 0;
-    // for(auto r_ : results) {
-    //   ++count;
-    // }
-    // assert(count == 25);
-    // state.ResumeTiming();
-  }
-}
+// static void mdds_rtree_search(benchmark::State &state) {
+//   int size = state.range(0);
+//   auto grid = make_grid(size, 2);
+//   mdds::rtree<double, Point, mdds_options> tree = grid_to_mdds_rtree(grid);
+//   for (auto _ : state) {
+//     auto results =
+//         tree.search({{5.0, 5.0}, {9.0, 9.0}}, rt_type::search_type::overlap);
+//     benchmark::DoNotOptimize(results);
+//     // state.PauseTiming();
+//     // int count = 0;
+//     // for(auto r_ : results) {
+//     //   ++count;
+//     // }
+//     // assert(count == 25);
+//     // state.ResumeTiming();
+//   }
+// }
 
 static void boost_rtree_init(benchmark::State &state) {
   int size = state.range(0);
@@ -203,15 +212,20 @@ BENCHMARK(aod_rtree_init)
     ->Range(16, max_N)
     ->Unit(benchmark::kMillisecond);
 
+BENCHMARK(aod_rtree_init_with_transaction)
+    ->RangeMultiplier(2)
+    ->Range(16, max_N)
+    ->Unit(benchmark::kMillisecond);
+
 BENCHMARK(superliminal_rtree_init)
     ->RangeMultiplier(2)
     ->Range(16, max_N)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(mdds_rtree_init)
-    ->RangeMultiplier(2)
-    ->Range(16, max_N)
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK(mdds_rtree_init)
+//     ->RangeMultiplier(2)
+//     ->Range(16, max_N)
+//     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK(boost_rtree_init)
     ->RangeMultiplier(2)
@@ -229,10 +243,10 @@ BENCHMARK(superliminal_rtree_search)
     ->Range(16, max_N)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(mdds_rtree_search)
-    ->RangeMultiplier(2)
-    ->Range(16, 64) // slow
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK(mdds_rtree_search)
+//     ->RangeMultiplier(2)
+//     ->Range(16, 64) // slow
+//     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK(boost_rtree_search)
     ->RangeMultiplier(2)
@@ -250,10 +264,10 @@ BENCHMARK(superliminal_rtree_copy)
     ->Range(16, max_N)
     ->Unit(benchmark::kMillisecond);
 
-BENCHMARK(mdds_rtree_copy)
-    ->RangeMultiplier(2)
-    ->Range(16, max_N)
-    ->Unit(benchmark::kMillisecond);
+// BENCHMARK(mdds_rtree_copy)
+//     ->RangeMultiplier(2)
+//     ->Range(16, max_N)
+//     ->Unit(benchmark::kMillisecond);
 
 BENCHMARK(boost_rtree_copy)
     ->RangeMultiplier(2)
