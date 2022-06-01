@@ -81,6 +81,9 @@ RtreeBase::Transaction::Transaction(RtreeBase *tree) : tree(tree) {
 #if !MUTABLE_NODE_ENTRIES
   transients.node_entries = transient(tree->m_node_entries);
 #endif
+  #if !MUTABLE_NODES
+  transients.nodes = transient(tree->m_nodes);
+#endif
 }
 
 RtreeBase::Transaction::~Transaction() {
@@ -93,6 +96,10 @@ RtreeBase::Transaction::~Transaction() {
 #if !MUTABLE_NODE_ENTRIES
   assign(tree->m_node_entries, persistent(tree->m_transients.value().node_entries));
 #endif
+
+  #if !MUTABLE_NODES
+  tree->m_nodes = tree->m_transients.value().nodes.persistent();
+  #endif
 
   tree->m_is_in_transaction = false;
   tree->m_transients = std::nullopt;
@@ -149,7 +156,13 @@ RtreeBase::Rid RtreeBase::make_rect_id() {
 }
 RtreeBase::Nid RtreeBase::make_node_id() {
   Nid nid{m_nodes_count++};
+
+#if MUTABLE_NODES
   m_nodes.resize(m_nodes_count);
+#else
+  resize(m_transients.value().nodes, m_nodes_count);
+#endif
+
   size_t sz_node_entries = m_nodes_count * M;
   resize(
 #if MUTABLE_NODE_ENTRIES
@@ -204,9 +217,13 @@ RtreeBase::Did RtreeBase::make_data_id() {
   return d;
 }
 
-inline RtreeBase::Node &RtreeBase::get_node(Nid n) { return m_nodes[n.id]; }
 inline const RtreeBase::Node &RtreeBase::get_node(Nid n) const {
+#if MUTABLE_NODES
   return m_nodes[n.id];
+#else
+  return m_is_in_transaction ? m_transients.value().nodes[n.id]
+                             : m_nodes[n.id];
+#endif
 }
 
 inline RtreeBase::Eid RtreeBase::get_node_entry(Nid n, int idx) const {
@@ -321,7 +338,6 @@ void RtreeBase::init() {
 
   // m_rects_low.resize(0);
   // m_rects_high.resize(0);
-  m_nodes.resize(0);
   // m_entries.resize(0);
 
   m_root_id = make_node_id();
@@ -351,7 +367,7 @@ RtreeBase::Nid RtreeBase::choose_node(Nid n, Rid r, int height,
                                       Traversal &traversal) {
   ASSERT(n);
   ASSERT(r);
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   if (node.height == height) {
     return n;
   }
@@ -378,7 +394,7 @@ RtreeBase::Eid RtreeBase::choose_subtree(Nid n, Rid r) {
   ELEMTYPE best_area;
   Eid best;
 
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   ASSERT(node.count);
 
   for (int i = 0; i < node.count; i++) {
@@ -482,7 +498,7 @@ void RtreeBase::reinsert_entry(Eid e) {
 
 RtreeBase::Nid RtreeBase::insert(Nid n, Eid e) {
   Nid nn; // new node (falsy)
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   if (node.count < M) {
     plain_insert(n, e);
   } else {
@@ -495,17 +511,17 @@ RtreeBase::Nid RtreeBase::insert(Nid n, Eid e) {
 }
 
 void RtreeBase::plain_insert(Nid n, Eid e) {
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   ASSERT(node.count < M);
   set_node_entry(n, node.count, e);
-  ++node.count;
+  set_node_count(n, node.count+1);
 }
 
 RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
   Nid nn = make_node_id();
-  Node &node = get_node(n);
-  Node &new_node = get_node(nn);
-  new_node.height = node.height; // important!
+  set_node_height(nn, get_node(n).height); // important!
+
+  const Node &node = get_node(n);
   ASSERT(node.count == M); // if node is not full, makes no sense being here
 
   std::vector<Eid> &entries = m_partition.entries;
@@ -519,16 +535,16 @@ RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
 
   Seeds seeds = pick_seeds(entries);
 
-  node.count = 0;
-  new_node.count = 0;
+  set_node_count(n, 0);
+  set_node_count(nn, 0);
 
   distribute_entries(n, nn, entries, seeds);
   // debugging: just placing first half entries to n, rest to nn
   // distribute_entries_naive(n, nn, entries);
 
-  ASSERT(node.count + new_node.count == M + 1);
-  ASSERT(node.count >= m);
-  ASSERT(new_node.count >= m);
+  ASSERT(get_node(n).count + get_node(nn).count == M + 1);
+  ASSERT(get_node(n).count >= m);
+  ASSERT(get_node(nn).count >= m);
 
   return nn;
 }
@@ -692,15 +708,10 @@ void RtreeBase::adjust_tree(const Traversal &traversal, Eid e, Nid nn) {
     // references might be invalid.
     const Nid new_root_id = make_node_id();
 
-    Node &new_root = get_node(new_root_id);
     const Node &existing_root = get_node(m_root_id);
-    new_root.height = existing_root.height + 1;
+    set_node_height(new_root_id, existing_root.height+1);
 
-#ifndef NDEBUG
-    // new_node used only for assert, ifdef NDBEG : warning for unused variable
-    const Node &new_node = get_node(nn);
-    ASSERT(existing_root.height == new_node.height);
-#endif
+    ASSERT(get_node(m_root_id).height == get_node(nn).height);
 
     const Eid old_root_e = make_entry_id();
     const Eid new_node_e = make_entry_id();
@@ -903,9 +914,11 @@ int RtreeBase::remove(const Vec &low, const Vec &high, Predicate pred) {
 void RtreeBase::remove(Nid n, const RectRo &r, int &counter,
                        Traversals &traversals, const Traversal &cur_traversal,
                        Predicate cb) {
-  Node &node = get_node(n);
-  if (node.is_internal()) {
-    for (int i = 0; i < node.count; ++i) {
+  const bool is_internal = get_node(n).is_internal();
+  // CAUTION: non-const node_count, since it gets modified (decreased)
+  int node_count = get_node(n).count;
+  if (is_internal) {
+    for (int i = 0; i < node_count; ++i) {
       Eid e = get_node_entry(n, i);
       const Entry &entry = get_entry(e);
       if (rects_overlap(r, entry.rect_id)) {
@@ -920,15 +933,17 @@ void RtreeBase::remove(Nid n, const RectRo &r, int &counter,
   } else {
     // leaf
     bool removed = false;
-    for (int i = 0; i < node.count; ++i) {
+    for (int i = 0; i < node_count; ++i) {
       Eid e = get_node_entry(n, i);
       const Entry &entry = get_entry(e);
       if (rects_overlap(r, entry.rect_id)) {
         if (cb(e)) {
           removed = true;
+          remove_node_entry(n, i); // CAUTION! this modifies the node.count
           ++counter;
-          remove_node_entry(n, i);
-          --i; // need to revisit i again (remove_node_entry shuffles entries)
+
+          --node_count;
+          --i; // CAUTION! need to revisit i again (remove_node_entry swaps entries)
         }
       }
     }
@@ -939,7 +954,7 @@ void RtreeBase::remove(Nid n, const RectRo &r, int &counter,
 }
 
 bool RtreeBase::remove_node_entry(Nid n, Eid e) {
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   int idx = -1;
   for (int i = 0; i < node.count; ++i) {
     if (get_node_entry(n, i) == e) {
@@ -951,15 +966,15 @@ bool RtreeBase::remove_node_entry(Nid n, Eid e) {
     return false;
 
   set_node_entry(n, idx, get_node_entry(n, node.count - 1));
-  --node.count;
+  set_node_count(n, node.count-1);
   return true;
 }
 
 void RtreeBase::remove_node_entry(Nid n, int idx) {
-  Node &node = get_node(n);
+  const Node &node = get_node(n);
   ASSERT(idx < node.count);
   set_node_entry(n, idx, get_node_entry(n, node.count - 1));
-  --node.count;
+  set_node_count(n, node.count-1);
 }
 
 void RtreeBase::condense_tree(const Traversals &traversals) {
@@ -967,7 +982,7 @@ void RtreeBase::condense_tree(const Traversals &traversals) {
   for (const Traversal &traversal : traversals) {
     for (int i = traversal.size() - 1; i >= 1; --i) {
       const TraversalEntry &x = traversal[i];
-      Node &node = get_node(x.node);
+      const Node &node = get_node(x.node);
       if (node.count < m) {
         const TraversalEntry &p = traversal[i - 1];
         if (node.count == 0) {
@@ -978,7 +993,7 @@ void RtreeBase::condense_tree(const Traversals &traversals) {
           // Add all children of X to S
           entries_to_reinsert.insert(get_node_entry(x.node, j));
         }
-        node.count = 0;
+        set_node_count(x.node, 0);
         // this might return false, but it's fine (in case that entry
         // already removed)
         remove_node_entry(p.node, x.entry);
@@ -988,9 +1003,9 @@ void RtreeBase::condense_tree(const Traversals &traversals) {
   }
 
   // if root has no children, make it a leaf node
-  Node &root = get_node(m_root_id);
+  const Node &root = get_node(m_root_id);
   if (root.count == 0) {
-    root.height = 0;
+    set_node_height(m_root_id, 0);
   }
   // skipping reinserting entries that point to empty node
   std::set<Eid>::iterator it = entries_to_reinsert.begin();
@@ -1028,6 +1043,26 @@ inline RtreeBase::ELEMTYPE RtreeBase::rect_low_ro(const RectRo &r, const int dim
 inline RtreeBase::ELEMTYPE RtreeBase::rect_high_ro(const RectRo &r, const int dim) const {
   return r.high[dim];
 }
+
+void RtreeBase::set_node_height(Nid n, int height) {
+#if MUTABLE_NODES
+  m_nodes[n.id].height = height;
+#else
+  Node node = get_node(n);
+  node.height = height;
+  m_transients.value().nodes.set(n.id, node);
+#endif
+}
+void RtreeBase::set_node_count(Nid n, int count) {
+#if MUTABLE_NODES
+  m_nodes[n.id].count = count;
+#else
+  Node node = get_node(n);
+  node.count = count;
+  m_transients.value().nodes.set(n.id, node);
+#endif
+}
+
 
 // debug/print related functions from now on (probably)
 
@@ -1253,7 +1288,7 @@ bool RtreeBase::has_duplicate_entries() {
   std::set<id_t> entries;
 
   std::function<bool(Nid)> traverse = [&](Nid n) {
-    Node &node = get_node(n);
+    const Node &node = get_node(n);
 
     for (int i = 0; i < node.count; ++i) {
       Eid e = get_node_entry(n, i);

@@ -14,6 +14,7 @@
 
 #define MUTABLE 0
 #define MUTABLE_NODE_ENTRIES 0
+#define MUTABLE_NODES 0
 
 namespace aod {
 
@@ -134,7 +135,12 @@ class RtreeBase {
   mutable Partition m_partition;
   mutable Traversal m_traversal;
 
+  #if MUTABLE_NODES
   std::vector<Node> m_nodes;
+  #else
+  immer::vector<Node> m_nodes;
+  #endif
+
   #if MUTABLE_NODE_ENTRIES
   std::vector<Eid> m_node_entries;
   #else
@@ -150,6 +156,9 @@ class RtreeBase {
     immer::vector_transient<Entry> entries;
 #if !MUTABLE_NODE_ENTRIES
     immer::vector_transient<Eid> node_entries;
+#endif
+#if !MUTABLE_NODES
+    immer::vector_transient<Node> nodes;
 #endif
   };
 
@@ -176,7 +185,6 @@ class RtreeBase {
   Eid get_node_entry(Nid n, int idx) const;
   void set_node_entry(Nid n, int idx, Eid e);
 
-  Node &get_node(Nid n);
   const Node &get_node(Nid n) const;
 
   inline const Entry &get_entry(Eid e) const {
@@ -265,6 +273,7 @@ class RtreeBase {
   void combine_rects(Rid a, Rid b, Rid dst);
   void absorb_rect(Rid a, Rect& dst) const;
   void update_entry_rect(Eid e);
+
   void set_entry_rect(Eid, Rid);
   void set_entry_data(Eid, Did);
   void set_entry_child(Eid, Nid);
@@ -299,6 +308,9 @@ public:
   ELEMTYPE rect_high_ro(const RectRo& r, const int dim) const;
 
   size_t rect_index(Rid r, const int dim) const;
+
+  void set_node_height(Nid, int);
+  void set_node_count(Nid, int);
 };
 
 }
