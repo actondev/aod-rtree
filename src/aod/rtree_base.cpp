@@ -343,7 +343,6 @@ void RtreeBase::init() {
   m_root_id = make_node_id();
 
   m_temp_rect = make_rect_id();
-  m_partition.entries.resize(M + 1);
 
   m_partition.groups_rects[0] = make_rect_id();
   m_partition.groups_rects[1] = make_rect_id();
@@ -351,7 +350,6 @@ void RtreeBase::init() {
   m_partition.temp_rects[0] = make_rect_id();
   m_partition.temp_rects[1] = make_rect_id();
   m_partition.cover_rect = make_rect_id();
-  m_partition.entries_areas.resize(M + 1);
 
   m_internal_rects_count = m_rects_count;
 }
@@ -518,6 +516,8 @@ void RtreeBase::plain_insert(Nid n, Eid e) {
 }
 
 RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
+  m_partition.entries_areas.resize(M + 1);
+
   Nid nn = make_node_id();
   set_node_height(nn, get_node(n).height); // important!
 
@@ -526,12 +526,11 @@ RtreeBase::Nid RtreeBase::split_and_insert(Nid n, Eid e) {
 
   std::vector<Eid> &entries = m_partition.entries;
   entries.clear();
-  entries.resize(M + 1);
-
+  entries.reserve(M+1);
   for (int i = 0; i < node.count; ++i) {
-    entries[i] = get_node_entry(n, i);
+    entries.push_back(get_node_entry(n, i));
   }
-  entries[M] = e; // the new entry
+  entries.push_back(e); // the new entry
 
   Seeds seeds = pick_seeds(entries);
 
