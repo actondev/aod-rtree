@@ -77,6 +77,7 @@ RtreeBase::Transaction::Transaction(RtreeBase *tree) : tree(tree) {
   Transients &transients = tree->m_transients.value();
   transients.low = transient(tree->m_rects_low);
   transients.high = transient(tree->m_rects_high);
+  transients.entries = transient(tree->m_entries);
 }
 
 RtreeBase::Transaction::~Transaction() {
@@ -85,6 +86,7 @@ RtreeBase::Transaction::~Transaction() {
 
   assign(tree->m_rects_low, persistent(tree->m_transients.value().low));
   assign(tree->m_rects_high, persistent(tree->m_transients.value().high));
+  assign(tree->m_entries, persistent(tree->m_transients.value().entries));
 
   tree->m_is_in_transaction = false;
   tree->m_transients = std::nullopt;
@@ -147,7 +149,7 @@ RtreeBase::Nid RtreeBase::make_node_id() {
 }
 RtreeBase::Eid RtreeBase::make_entry_id() {
   Eid e{m_entries_count++};
-  m_entries.resize(m_entries_count);
+  resize(m_transients.value().entries, m_entries_count);
 
   Rid r = make_rect_id();
   set_entry_rect(e, r);
@@ -155,16 +157,32 @@ RtreeBase::Eid RtreeBase::make_entry_id() {
 }
 
 void RtreeBase::set_entry_rect(Eid e, Rid r) {
-  Entry &entry = get_entry(e);
-  entry.rect_id = make_rect_id();
+  #if MUTABLE
+  m_entries[e.id].rect_id = r;
+  #else
+  Entry entry = get_entry(e);
+  entry.rect_id = r;
+  container_set(m_transients.value().entries, e.id, entry);
+  #endif
 }
 void RtreeBase::set_entry_data(Eid e, Did d) {
-  Entry &entry = get_entry(e);
+#if MUTABLE
+  m_entries[e.id].data_id = d;
+#else
+  Entry entry = get_entry(e);
   entry.data_id = d;
+  container_set(m_transients.value().entries, e.id, entry);
+#endif
 }
+
 void RtreeBase::set_entry_child(Eid e, Nid n) {
-  Entry &entry = get_entry(e);
+  #if MUTABLE
+  m_entries[e.id].child_id = n;
+#else
+  Entry entry = get_entry(e);
   entry.child_id = n;
+  container_set(m_transients.value().entries, e.id, entry);
+#endif
 }
 
 RtreeBase::Did RtreeBase::make_data_id() {
@@ -275,7 +293,7 @@ void RtreeBase::init() {
   // m_rects_high.resize(0);
   m_nodes.resize(0);
   m_node_entries.resize(0);
-  m_entries.resize(0);
+  // m_entries.resize(0);
 
   m_root_id = make_node_id();
 

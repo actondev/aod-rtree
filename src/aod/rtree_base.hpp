@@ -12,6 +12,8 @@
 #include <optional>
 #define ASSERT assert
 
+#define MUTABLE 0
+
 namespace aod {
 
 class RtreeBase {
@@ -131,15 +133,16 @@ class RtreeBase {
   mutable Partition m_partition;
   mutable Traversal m_traversal;
 
-  immer::vector<ELEMTYPE> m_rects_low;
-  immer::vector<ELEMTYPE> m_rects_high;
   std::vector<Node> m_nodes;
   std::vector<Eid> m_node_entries;
-  std::vector<Entry> m_entries;
 
+  immer::vector<ELEMTYPE> m_rects_low;
+  immer::vector<ELEMTYPE> m_rects_high;
+  immer::vector<Entry> m_entries;
   struct Transients {
     immer::vector_transient<ELEMTYPE> low;
     immer::vector_transient<ELEMTYPE> high;
+    immer::vector_transient<Entry> entries;
   };
 
   struct Transaction {
@@ -168,8 +171,13 @@ class RtreeBase {
   Node &get_node(Nid n);
   const Node &get_node(Nid n) const;
 
-  inline Entry &get_entry(Eid e) { return m_entries[e.id]; }
-  inline const Entry &get_entry(Eid e) const { return m_entries[e.id]; }
+  inline const Entry &get_entry(Eid e) const {
+#if MUTABLE
+    return m_entries[e.id];
+#else
+    return m_is_in_transaction ? m_transients.value().entries[e.id] : m_entries[e.id];
+#endif
+  }
 
   ELEMTYPE rect_volume(Rid) const;
   
@@ -249,6 +257,9 @@ class RtreeBase {
   void combine_rects(Rid a, Rid b, Rid dst);
   void absorb_rect(Rid a, Rect& dst) const;
   void update_entry_rect(Eid e);
+  void set_entry_rect(Eid, Rid);
+  void set_entry_data(Eid, Did);
+  void set_entry_child(Eid, Nid);
 
   void init();
 public:
