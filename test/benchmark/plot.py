@@ -1,5 +1,7 @@
 #!/usr/bin/env python
-"""Script to visualize google-benchmark output"""
+"""Script to visualize google-benchmark output. Credit:
+https://github.com/lakshayg/google_benchmark_plot
+"""
 from __future__ import print_function
 import argparse
 import sys
@@ -75,10 +77,13 @@ def parse_args():
     parser.add_argument("--ylabel", type=str, help="label of the y-axis")
     parser.add_argument("--title", type=str, default="", help="title of the plot")
     parser.add_argument(
-        "--logx", action="store_true", help="plot x-axis on a logarithmic scale"
+        "--logx-base", type=int, default=0, help="the log base for x-axis"
     )
     parser.add_argument(
-        "--logy", action="store_true", help="plot y-axis on a logarithmic scale"
+        "--logy-base", type=int, default=0, help="the log base for y-axis"
+    )
+    parser.add_argument(
+        "--grid", action="store_true", help="show grid"
     )
     parser.add_argument(
         "--output", type=str, default="", help="File in which to save the graph"
@@ -124,10 +129,13 @@ def plot_groups(label_groups, args):
     """Display the processed data"""
     for label, group in label_groups.items():
         plt.plot(group["input"], group[args.metric], label=label, marker=".")
-    if args.logx:
-        plt.xscale("log")
-    if args.logy:
-        plt.yscale("log")
+    if args.logx_base > 0:
+        plt.xscale("log", base = args.logx_base)
+    if args.logy_base > 0:
+        plt.yscale("log", base = args.logy_base)
+
+    if args.grid:
+        plt.grid(True, which='both', color='0.8')
     plt.xlabel(args.xlabel)
     plt.ylabel(args.ylabel)
     plt.title(args.title)

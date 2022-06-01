@@ -39,21 +39,21 @@ echo "Running benchmarks for -O${opt}"
 csv="benchmark-init-O${opt}.csv"
 png="benchmark-init-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=init --benchmark_format=csv | tee "$csv"
-python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "init: inserting points from a NxN grid" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "init: inserting points from a NxN grid" --xlabel "N" --ylabel "time (ms)" --logx-base=2 --logy-base=10 --grid
    #+end_src
 
    #+begin_src sh
 csv="benchmark-search-O${opt}.csv"
 png="benchmark-search-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=search --benchmark_format=csv | tee "$csv"
-python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "search (5x5 area)" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "search (5x5 area)" --xlabel "N" --ylabel "time (ms)" --logx-base=2 --grid
    #+end_src
 
    #+begin_src sh
 csv="benchmark-copy-O${opt}.csv"
 png="benchmark-copy-O${opt}.png"
 ./build/test/benchmark/benchmarks --benchmark_filter=copy --benchmark_format=csv | tee "$csv"
-python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "copy" --xlabel "N" --ylabel "time (ms)"
+python3 ./test/benchmark/plot.py -f "$csv" --output "doc/$png" --title "copy" --xlabel "N" --ylabel "time (ms)" --logx-base=2 --logy-base=10 --grid
    #+end_src
 
    
