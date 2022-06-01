@@ -11,7 +11,7 @@ RTree<Point, double, 2> grid_to_superliminal_rtree(const Grid &grid) {
   return tree;
 }
 
-TEST_CASE("superliminal RTree 200x200", "[.ignore]") {
+TEST_CASE("superliminal RTree 200x200", "[benchmark]") {
   int size = benchmark_size;
   auto grid = make_grid(size, 2);
   auto t1 = high_resolution_clock::now();
@@ -53,7 +53,7 @@ TEST_CASE("superliminal RTree 200x200", "[.ignore]") {
   WARN("copy took " << duration_ms(t2 - t1) << " ms ");
 }
 
-TEST_CASE("aod::Rtree 200x200", "[.benchmark]") {
+TEST_CASE("aod::Rtree 200x200", "[benchmark]") {
   int size = benchmark_size;
   auto grid = make_grid(size, 2);
   auto t1 = high_resolution_clock::now();
@@ -200,7 +200,6 @@ TEST_CASE("aod::Rtree 2x2", "[aod::Rtree][fixme]") {
   REQUIRE(tree.size() == size * size);
 
   cout << tree.to_xml() << endl;
-
 }
 
 

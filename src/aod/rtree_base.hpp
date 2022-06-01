@@ -131,22 +131,15 @@ class RtreeBase {
   mutable Partition m_partition;
   mutable Traversal m_traversal;
 
-  // std::vector<ELEMTYPE> m_rects_low;
-  // std::vector<ELEMTYPE> m_rects_high;
   immer::vector<ELEMTYPE> m_rects_low;
   immer::vector<ELEMTYPE> m_rects_high;
   std::vector<Node> m_nodes;
   std::vector<Eid> m_node_entries;
   std::vector<Entry> m_entries;
 
-  struct State {
-    std::optional<immer::vector_transient<ELEMTYPE>> low;
-    std::optional<immer::vector_transient<ELEMTYPE>> high;
-
-    void reset() {
-      *this = State {};
-    }
-    // immer::vector_transient<ELEMTYPE> m_trans_high; 
+  struct Transients {
+    immer::vector_transient<ELEMTYPE> low;
+    immer::vector_transient<ELEMTYPE> high;
   };
 
   struct Transaction {
@@ -162,7 +155,7 @@ class RtreeBase {
 
   friend Transaction::Transaction(RtreeBase* tree);
 
-  State m_state;
+  std::optional<Transients> m_transients;
 
   Rid make_rect_id();
   Nid make_node_id();
@@ -178,27 +171,8 @@ class RtreeBase {
   inline Entry &get_entry(Eid e) { return m_entries[e.id]; }
   inline const Entry &get_entry(Eid e) const { return m_entries[e.id]; }
 
-  size_t rect_index(Rid r, const int dim) const {
-    return r.id * m_dims + dim;
-  }
-
   ELEMTYPE rect_volume(Rid) const;
-  inline ELEMTYPE rect_low_ro(const Rid r, const int dim) const {
-    // return m_rects_low[r.id * m_dims + dim];
-    const auto idx = r.id * m_dims + dim;
-    return m_state.low ? m_state.low.value()[idx] : m_rects_low[idx];
-  }
-  inline const ELEMTYPE rect_high_ro(const Rid r, const int dim) const {
-    const auto idx = r.id * m_dims + dim;
-    return m_state.high ? m_state.high.value()[idx] : m_rects_high[idx];
-    // return m_rects_high[r.id * m_dims + dim];
-  }
-  inline ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const {
-    return r.low[dim];
-  }
-  inline const ELEMTYPE rect_high_ro(const RectRo& r, const int dim) const {
-    return r.high[dim];
-  }
+  
   // NB: these are defined as inline in the cpp, so they cannot be
   // used from the outside. Not sure how to deal with this
   // ELEMTYPE &rect_low_rw(const Rid r, const int dim);
@@ -296,6 +270,16 @@ public:
   bool validate_mbrs();
   bool validate_mbrs(Eid e); // could be const but ..
   #endif
+
+ private:
+  // Caution: these (may are) inlined the cpp file.
+  ELEMTYPE rect_low_ro(const Rid r, const int dim) const;
+  ELEMTYPE rect_high_ro(const Rid r, const int dim) const;
+
+  ELEMTYPE rect_low_ro(const RectRo& r, const int dim) const;
+  ELEMTYPE rect_high_ro(const RectRo& r, const int dim) const;
+
+  size_t rect_index(Rid r, const int dim) const;
 };
 
 }

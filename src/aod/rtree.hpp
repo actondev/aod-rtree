@@ -98,10 +98,7 @@ PRE int QUAL::search(const Vec &low, const Vec &high, SearchCbExt cb) const {
   RtreeBase::SearchCb base_cb = [&](Eid e) {
     const Entry& entry = get_entry(e);
     const DATATYPE &data = get_data(entry.data_id);
-    for(int i=0; i<m_dims; ++i) {
-      callback_rect.low[i] = rect_low_ro(entry.rect_id, i);
-      callback_rect.high[i] = rect_high_ro(entry.rect_id, i);
-    }
+    copy_rect(entry.rect_id, callback_rect);
     return cb(data, callback_rect);
   };
   return RtreeBase::search(low, high, base_cb);
@@ -126,10 +123,7 @@ PRE int QUAL::remove(const Vec &low, const Vec &high, PredicateExt pred) {
   RtreeBase::Predicate base_pred = [&](Eid e) {
     const Entry& entry = get_entry(e);
     const DATATYPE &data = get_data(entry.data_id);
-    for (int i = 0; i < m_dims; ++i) {
-      rect.low[i] = rect_low_ro(entry.rect_id, i);
-      rect.high[i] = rect_high_ro(entry.rect_id, i);
-    }
+    copy_rect(entry.rect_id, rect);
     return pred(data, rect);
   };
 
