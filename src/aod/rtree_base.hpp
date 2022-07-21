@@ -186,6 +186,9 @@ class RtreeBase {
   std::vector<Eid> search(const Vec &low, const Vec &high) const;
   int search(const Vec &low, const Vec &high, std::vector<Eid> &results) const;
   int search(const Vec &low, const Vec &high, SearchCb cb) const;
+
+  int iterate(SearchCb cb) const;
+
   std::string to_string();
 
   void reinsert_entry(Eid e);
@@ -258,6 +261,10 @@ public:
   bool validate_mbrs();
   bool validate_mbrs(Eid e); // could be const but ..
   #endif
+
+ private:
+  // private declarations might be inlined in the cpp file!
+  bool iterate(Nid, int &iterate_count, SearchCb cb) const;
 };
 
 }

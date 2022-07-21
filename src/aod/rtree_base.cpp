@@ -691,7 +691,38 @@ bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) co
   return true; // continue searching
 }
 
-// TODO could be const but I'm using copy_rect & combine_rects
+inline bool RtreeBase::iterate(Nid n, int &iterate_count, SearchCb cb) const {
+  const Node &node = get_node(n);
+  if (node.is_internal()) {
+    for (int i = 0; i < node.count; ++i) {
+      const Eid e = get_node_entry(n, i);
+      const Entry &entry = get_entry(e);
+      if (!iterate(entry.child_id, iterate_count, cb)) {
+        // stop iterating
+        return false;
+      }
+    }
+  } else {
+    // leaf
+    for (int i = 0; i < node.count; ++i) {
+      const Eid e = get_node_entry(n, i);
+      if (!cb(e)) {
+        // stop iterating
+        return false;
+      } else {
+        ++iterate_count;
+      }
+    }
+  }
+  return true; // continue iterating
+}
+
+int RtreeBase::iterate(SearchCb cb) const {
+  int iterate_count = 0;
+  iterate(m_root_id, iterate_count, cb);
+  return iterate_count;
+}
+
 RtreeBase::Rect RtreeBase::bounds() const {
   Rect res;
   res.low.resize(m_dims, 0);
