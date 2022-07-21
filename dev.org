@@ -5,7 +5,10 @@ rm -rf build
 meson setup build
 #+end_src
 * testing
+  Note: you need boost installed for the benchmark tests
   #+begin_src sh
+meson configure build -Dtest=true
+meson configure build -Doptimization=2
 meson test -C build -v
   #+end_src
 * benchmark

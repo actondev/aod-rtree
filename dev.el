@@ -13,7 +13,7 @@
 		(compile "meson test --benchmark -C build -v"))
 
 (aod-rtree/defn test
-		(let ((debug (aod.transient/flag 'rtree "--debug")))
+		(let ((debug (aod.transient/flag 'aod-rtree "--debug")))
 		  (if debug
 		      (s7ty/debug-weirdNox-gdb "build/test/run-tests" "")
 		    (test-simple-run "meson test -C build -v"))))

@@ -40,31 +40,6 @@ test('catch',
      ]
     )
 
-# should I bother with gtest? (vs catch2)
-
-# gtest_proj = subproject('gtest')
-# # gtest_dep = dependency('gtest', main: true, required: true)
-# gtest_dep = gtest_proj.get_variable('gtest_main_dep')
-# gtest_test_src = files(
-#   'test_gtest.cpp'
-# )
-# gtest_tests = executable(
-#   'gtest-tests',
-#   sources: gtest_test_src,
-#   dependencies : [
-#     gtest_dep,
-#     aod_rtree_dep,
-#   ],
-#   cpp_args: [
-#     '-Wno-narrowing',
-#     '-Wno-sign-compare'
-#     # '-DCATCH_CONFIG_ENABLE_BENCHMARKING'
-#   ]
-# )
-
-# test('gtest',
-#      gtest_tests,
-#      workdir: meson.project_source_root(),
-#     )
-
-subdir('benchmark')
+if get_option('benchmark')
+  subdir('benchmark')
+endif
