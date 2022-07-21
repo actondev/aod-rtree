@@ -626,29 +626,6 @@ RtreeBase::Seeds RtreeBase::pick_seeds(const std::vector<Eid> &entries) {
 
 size_t RtreeBase::size() { return m_size; }
 
-std::vector<RtreeBase::Eid> RtreeBase::search(const Vec &low, const Vec &high) const {
-  std::vector<Eid> res;
-
-  search(low, high, res);
-  return res;
-}
-
-int RtreeBase::search(const Vec &low, const Vec &high,
-                      std::vector<Eid> &results) const {
-  ASSERT(low.size() == static_cast<uint>(m_dims));
-  ASSERT(high.size() == static_cast<uint>(m_dims));
-
-  SearchCb cb = [&results](const Eid &e) {
-    results.push_back(e);
-    return true;
-  };
-
-  int found_count = 0;
-  RectRo r{low, high};
-  search(m_root_id, r, found_count, cb);
-  return found_count;
-}
-
 int RtreeBase::search(const Vec &low, const Vec &high, SearchCb cb) const {
   ASSERT(low.size() == static_cast<uint>(m_dims));
   ASSERT(high.size() == static_cast<uint>(m_dims));

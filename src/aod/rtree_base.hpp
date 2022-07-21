@@ -183,8 +183,6 @@ class RtreeBase {
 
   void insert(const Vec &low, const Vec &high, Did);
 
-  std::vector<Eid> search(const Vec &low, const Vec &high) const;
-  int search(const Vec &low, const Vec &high, std::vector<Eid> &results) const;
   int search(const Vec &low, const Vec &high, SearchCb cb) const;
 
   int iterate(SearchCb cb) const;
