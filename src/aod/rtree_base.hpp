@@ -170,6 +170,8 @@ class RtreeBase {
   bool rects_overlap(const RectRo&, Rid) const;
   bool rects_overlap(Rid, Rid) const;
 
+  bool rect_contains_low(const RectRo& rect, Rid other) const;
+
   std::string rect_to_string(Rid);
   void rect_to_string(Rid, std::ostream &os);
   std::string traversal_to_string(const Traversal &traversal);
@@ -184,6 +186,7 @@ class RtreeBase {
   void insert(const Vec &low, const Vec &high, Did);
 
   int search(const Vec &low, const Vec &high, SearchCb cb) const;
+  int search_low(const Vec &low, const Vec &high, SearchCb cb) const;
 
   int iterate(SearchCb cb) const;
 
@@ -206,6 +209,7 @@ class RtreeBase {
   void distribute_entries_naive(Nid n, Nid nn, std::vector<Eid> entries);
 
   bool search(Nid, const RectRo&, int &found_count, SearchCb) const;
+  bool search_low(Nid, const RectRo&, int &found_count, SearchCb) const;
 
   /// insert entry into leaf node: if a split occured, returns a valid new node
   Nid insert(Nid, Eid);

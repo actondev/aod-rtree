@@ -136,6 +136,16 @@ inline bool RtreeBase::rects_overlap(const RectRo& a, Rid b) const {
   return true;
 }
 
+inline bool RtreeBase::rect_contains_low(const RectRo& rect, Rid other) const {
+  for (int index = 0; index < m_dims; ++index) {
+    if (rect_high_ro(rect, index) < rect_low_ro(other, index) ||
+        rect_low_ro(rect, index) > rect_low_ro(other, index)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 inline bool RtreeBase::rects_overlap(Rid a, Rid b) const {
   for (int index = 0; index < m_dims; ++index) {
     if (rect_low_ro(a, index) > rect_high_ro(b, index) ||
@@ -667,6 +677,48 @@ bool RtreeBase::search(Nid n, const RectRo &r, int &found_count, SearchCb cb) co
   }
   return true; // continue searching
 }
+
+int RtreeBase::search_low(const Vec &low, const Vec &high, SearchCb cb) const {
+  ASSERT(low.size() == static_cast<uint>(m_dims));
+  ASSERT(high.size() == static_cast<uint>(m_dims));
+
+  int found_count = 0;
+  RectRo r{low, high};
+  search_low(m_root_id, r, found_count, cb);
+  return found_count;
+}
+
+bool RtreeBase::search_low(Nid n, const RectRo &r, int &found_count, SearchCb cb) const {
+  const Node &node = get_node(n);
+  if (node.is_internal()) {
+    for (int i = 0; i < node.count; ++i) {
+      const Eid e = get_node_entry(n, i);
+      const Entry &entry = get_entry(e);
+      if (rects_overlap(r, entry.rect_id)) {
+        if (!search_low(entry.child_id, r, found_count, cb)) {
+          // stop searching
+          return false;
+        }
+      }
+    }
+  } else {
+    // leaf
+    for (int i = 0; i < node.count; ++i) {
+      const Eid e = get_node_entry(n, i);
+      const Entry &entry = get_entry(e);
+      if (rect_contains_low(r, entry.rect_id)) {
+        if (!cb(e)) {
+          // stop searching
+          return false;
+        } else {
+          ++found_count;
+        }
+      }
+    }
+  }
+  return true; // continue searching
+}
+
 
 inline bool RtreeBase::iterate(Nid n, int &iterate_count, SearchCb cb) const {
   const Node &node = get_node(n);
